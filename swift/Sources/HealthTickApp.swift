@@ -20,7 +20,7 @@ struct HealthTickApp: App {
         }
         .defaultSize(width: 400, height: 320)
 
-        Window("帮助", id: "help") {
+        Window("帮助", id: "helpguide") {
             HelpView()
         }
         .defaultSize(width: 600, height: 650)
@@ -47,8 +47,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Set app icon from bundle resources
-        if let iconURL = Bundle.main.url(forResource: "AppIcon", withExtension: "icns", subdirectory: "Resources"),
-           let icon = NSImage(contentsOf: iconURL) {
+        let iconPath = Bundle.main.bundlePath + "/Contents/Resources/AppIcon.icns"
+        if let icon = NSImage(contentsOfFile: iconPath) {
             NSApp.applicationIconImage = icon
         }
         // Check for updates silently on launch

@@ -287,6 +287,19 @@ struct AboutTab: View {
                     .foregroundStyle(.tertiary)
             }
 
+            Button {
+                if let url = URL(string: "https://github.com/lifedever/health-tick-release#-赞助支持") {
+                    NSWorkspace.shared.open(url)
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "heart.fill")
+                        .foregroundStyle(.red)
+                    Text("赞助支持")
+                }
+            }
+            .buttonStyle(.borderless)
+
             Spacer()
 
             // Danger zone

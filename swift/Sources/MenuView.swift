@@ -101,7 +101,7 @@ struct MenuView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Text("\(next.icon)\(next.name)")
-                        .font(.caption.bold())
+                        .font(.callout.bold())
                         .foregroundStyle(.green)
                     Text(" 还差 ")
                         .font(.caption)
@@ -139,7 +139,7 @@ struct MenuView: View {
                 }
 
                 controlButton(title: "帮助", icon: "questionmark.circle") {
-                    openWindow(id: "help")
+                    openWindow(id: "helpguide")
                     bringToFront()
                 }
 

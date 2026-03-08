@@ -147,9 +147,10 @@ struct HelpView: View {
     }
 
     private func sponsorImage(_ name: String, label: String) -> some View {
-        VStack(spacing: 6) {
-            if let url = Bundle.main.url(forResource: name, withExtension: name == "alipay" ? "png" : "jpg", subdirectory: "Resources"),
-               let img = NSImage(contentsOf: url) {
+        let ext = name == "alipay" ? "png" : "jpg"
+        return VStack(spacing: 6) {
+            if let path = resolvePath(name: name, ext: ext),
+               let img = NSImage(contentsOfFile: path) {
                 Image(nsImage: img)
                     .resizable()
                     .scaledToFit()
@@ -160,6 +161,16 @@ struct HelpView: View {
                 .font(.caption)
                 .foregroundStyle(.tertiary)
         }
+    }
+
+    private func resolvePath(name: String, ext: String) -> String? {
+        // Try direct Resources path (build.sh copies here)
+        let direct = Bundle.main.bundlePath + "/Contents/Resources/\(name).\(ext)"
+        if FileManager.default.fileExists(atPath: direct) { return direct }
+        // Try SPM bundle resource path
+        if let url = Bundle.main.url(forResource: name, withExtension: ext) { return url.path }
+        if let url = Bundle.main.url(forResource: name, withExtension: ext, subdirectory: "Resources") { return url.path }
+        return nil
     }
 
     private func sectionTitle(_ title: String, icon: String, color: Color) -> some View {

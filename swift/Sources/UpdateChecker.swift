@@ -1,7 +1,7 @@
 import Foundation
 import AppKit
 
-let appVersion = "1.0.0"
+let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
 let githubRepo = "lifedever/health-tick-release"
 
 @MainActor
