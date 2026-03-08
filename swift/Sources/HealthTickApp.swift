@@ -15,34 +15,30 @@ struct HealthTickApp: App {
         }
         .menuBarExtraStyle(.window)
 
-        Window("设置", id: "settings") {
+        Window(L.settingsWindow, id: "settings") {
             SettingsView()
                 .environmentObject(state)
         }
-        .defaultSize(width: 440, height: 480)
+        .defaultSize(width: 440, height: 520)
         .commands {
-            // Replace default "New Window" etc
             CommandGroup(replacing: .newItem) {}
 
-            // HealthTick menu
             CommandGroup(after: .appInfo) {
-                Button("检查更新...") {
+                Button(L.checkForUpdates) {
                     UpdateChecker.shared.check(silent: false)
                 }
             }
 
-            // File menu - settings
             CommandGroup(replacing: .sidebar) {
-                Button("设置") {
+                Button(L.settings) {
                     openWindow(id: "settings")
                     bringToFront()
                 }
                 .keyboardShortcut(",", modifiers: .command)
             }
 
-            // Window menu items
             CommandGroup(before: .windowArrangement) {
-                Button("成就") {
+                Button(L.achievements) {
                     openWindow(id: "stats")
                     bringToFront()
                 }
@@ -51,9 +47,8 @@ struct HealthTickApp: App {
                 Divider()
             }
 
-            // Help menu
             CommandGroup(replacing: .help) {
-                Button("HealthTick 帮助") {
+                Button(L.helpMenu) {
                     openWindow(id: "helpguide")
                     bringToFront()
                 }
@@ -61,7 +56,7 @@ struct HealthTickApp: App {
 
                 Divider()
 
-                Button("赞助支持") {
+                Button(L.sponsorSupport) {
                     if let url = URL(string: "https://github.com/lifedever/health-tick-release#-赞助支持") {
                         NSWorkspace.shared.open(url)
                     }
@@ -69,19 +64,29 @@ struct HealthTickApp: App {
             }
         }
 
-        Window("帮助", id: "helpguide") {
+        Window(L.helpWindow, id: "helpguide") {
             HelpView()
         }
         .defaultSize(width: 600, height: 650)
 
-        Window("成就", id: "stats") {
+        Window(L.statsWindow, id: "stats") {
             StatsWindowView()
                 .environmentObject(state)
         }
         .defaultSize(width: 780, height: 620)
     }
 
+    private static let isDev = Bundle.main.bundleIdentifier?.hasSuffix(".dev") == true
+
     private var phaseSystemImage: String {
+        if Self.isDev {
+            switch state.phase {
+            case .working: return "figure.walk.diamond"
+            case .alerting, .breaking: return "cup.and.saucer"
+            case .waiting: return "hand.raised"
+            case .paused: return "pause.circle.fill"
+            }
+        }
         switch state.phase {
         case .working: return "figure.walk"
         case .alerting, .breaking: return "cup.and.saucer.fill"
@@ -100,12 +105,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var observer: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Set app icon from bundle resources
         let iconPath = Bundle.main.bundlePath + "/Contents/Resources/AppIcon.icns"
         if let icon = NSImage(contentsOfFile: iconPath) {
             NSApp.applicationIconImage = icon
         }
-        // Check for updates silently on launch, then every 4 hours
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
             UpdateChecker.shared.check(silent: true)
         }
@@ -115,7 +118,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        // Monitor window close to hide Dock icon when no windows are open
         observer = NotificationCenter.default.addObserver(
             forName: NSWindow.willCloseNotification,
             object: nil,

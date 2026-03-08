@@ -38,10 +38,17 @@ final class BreakOverlayManager {
     private let skipClicksNeeded = 3
     weak var appState: AppState?
     var onForceEnd: (() -> Void)?
+    var onBreakDone: (() -> Void)?
+
+    // Menu window pinning
+    private var menuPinTimer: Timer?
+    private weak var menuBarExtraPanel: NSPanel?
+    private var isMenuWindowMode = false
 
     func show(seconds: Int) {
         remaining = seconds
         skipClickCount = 0
+        isMenuWindowMode = false
         let position = appState?.config.breakPosition ?? .topRight
         if position == .fullscreen {
             createFullscreen()
@@ -49,6 +56,18 @@ final class BreakOverlayManager {
             createFloating(position: position)
         }
         startMonitoring()
+    }
+
+    func showMenuWindow(seconds: Int) {
+        remaining = seconds
+        skipClickCount = 0
+        isMenuWindowMode = true
+        startMonitoring()
+
+        // Find and pin the MenuBarExtra panel
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+            self?.pinMenuBarExtra()
+        }
     }
 
     func hide() {
@@ -59,6 +78,59 @@ final class BreakOverlayManager {
         countdownLabel = nil
         warningLabel = nil
         skipButton = nil
+        unpinMenuBarExtra()
+        isMenuWindowMode = false
+    }
+
+    // MARK: - Menu window pinning
+
+    private func pinMenuBarExtra() {
+        findMenuBarExtraPanel()
+
+        menuPinTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            Task { @MainActor [weak self] in
+                self?.ensureMenuPinned()
+            }
+        }
+    }
+
+    private func findMenuBarExtraPanel() {
+        for window in NSApp.windows {
+            guard let panel = window as? NSPanel else { continue }
+            // Skip our own overlay panels
+            if panel is KeyablePanel { continue }
+            // MenuBarExtra .window style creates an NSPanel with these characteristics
+            if panel.styleMask.contains(.nonactivatingPanel)
+                && panel.styleMask.contains(.fullSizeContentView)
+                && panel.frame.width < 350 {
+                menuBarExtraPanel = panel
+                panel.hidesOnDeactivate = false
+                panel.level = .floating
+                panel.orderFrontRegardless()
+                return
+            }
+        }
+    }
+
+    private func ensureMenuPinned() {
+        guard isMenuWindowMode else { return }
+        if let panel = menuBarExtraPanel, panel.isVisible {
+            panel.level = .floating
+            return
+        }
+        // Panel lost or hidden, try to find it again
+        findMenuBarExtraPanel()
+    }
+
+    private func unpinMenuBarExtra() {
+        menuPinTimer?.invalidate()
+        menuPinTimer = nil
+        if let panel = menuBarExtraPanel {
+            panel.hidesOnDeactivate = true
+            panel.level = .normal
+        }
+        menuBarExtraPanel = nil
     }
 
     // MARK: - Floating window
@@ -83,8 +155,8 @@ final class BreakOverlayManager {
         case .center:
             x = vis.midX - pw / 2
             y = vis.midY - ph / 2
-        case .fullscreen:
-            x = 0; y = 0 // won't reach here
+        case .fullscreen, .menuWindow:
+            x = 0; y = 0
         }
 
         let p = KeyablePanel(
@@ -95,7 +167,7 @@ final class BreakOverlayManager {
         )
         p.level = .floating
         p.isMovableByWindowBackground = true
-        p.title = "休息中"
+        p.title = L.phaseBreaking
         p.titlebarAppearsTransparent = true
 
         let content = p.contentView!
@@ -127,7 +199,7 @@ final class BreakOverlayManager {
             let h = frame.size.height
             let cy = h / 2
 
-            let title = makeLabel("休息时间", frame: NSMakeRect(0, cy + 60, w, 44), size: 36)
+            let title = makeLabel(L.breakTimeTitle, frame: NSMakeRect(0, cy + 60, w, 44), size: 36)
             title.font = NSFont.systemFont(ofSize: 36, weight: .medium)
             title.textColor = .white
             content.addSubview(title)
@@ -138,7 +210,7 @@ final class BreakOverlayManager {
             content.addSubview(countdown)
             if countdownLabel == nil { countdownLabel = countdown }
 
-            let msg = makeLabel("请离开电脑，起来走走", frame: NSMakeRect(0, cy - 65, w, 30), size: 18)
+            let msg = makeLabel(L.breakLeaveMsg, frame: NSMakeRect(0, cy - 65, w, 30), size: 18)
             msg.textColor = NSColor(white: 0.7, alpha: 1)
             content.addSubview(msg)
 
@@ -148,7 +220,7 @@ final class BreakOverlayManager {
             if warningLabel == nil { warningLabel = warn }
 
             let btn = NSButton(frame: NSMakeRect(w / 2 - 70, cy - 150, 140, 32))
-            btn.title = "跳过 (0/\(skipClicksNeeded))"
+            btn.title = L.skipButton(0, skipClicksNeeded)
             btn.bezelStyle = .rounded
             btn.font = NSFont.systemFont(ofSize: 13)
             btn.contentTintColor = NSColor(white: 0.5, alpha: 1)
@@ -172,7 +244,7 @@ final class BreakOverlayManager {
         content.addSubview(countdown)
         if countdownLabel == nil { countdownLabel = countdown }
 
-        let msg = makeLabel("起来走走，休息一下", frame: NSMakeRect(0, 58, pw, 20), size: 12)
+        let msg = makeLabel(L.breakFloatMsg, frame: NSMakeRect(0, 58, pw, 20), size: 12)
         msg.textColor = NSColor.secondaryLabelColor
         content.addSubview(msg)
 
@@ -182,7 +254,7 @@ final class BreakOverlayManager {
         if warningLabel == nil { warningLabel = warn }
 
         let btn = NSButton(frame: NSMakeRect(pw / 2 - 55, 6, 110, 26))
-        btn.title = "跳过 (0/\(skipClicksNeeded))"
+        btn.title = L.skipButton(0, skipClicksNeeded)
         btn.bezelStyle = .rounded
         btn.font = NSFont.systemFont(ofSize: 11)
         btn.contentTintColor = NSColor.tertiaryLabelColor
@@ -197,7 +269,7 @@ final class BreakOverlayManager {
         if skipClickCount >= skipClicksNeeded {
             onForceEnd?()
         } else {
-            skipButton?.title = "跳过 (\(skipClickCount)/\(skipClicksNeeded))"
+            skipButton?.title = L.skipButton(skipClickCount, skipClicksNeeded)
         }
     }
 
@@ -211,11 +283,31 @@ final class BreakOverlayManager {
     private func monitorTick() {
         let idle = getUserIdleSeconds()
         if idle < 3 && remaining > 0 {
-            warningLabel?.stringValue = "检测到操作，倒计时已暂停"
+            if isMenuWindowMode {
+                appState?.breakWarning = L.breakDetectedPause
+            }
+            warningLabel?.stringValue = L.breakDetectedPause
+            appState?.playBreakDetectSound()
         } else {
+            if isMenuWindowMode {
+                appState?.breakWarning = ""
+            }
             warningLabel?.stringValue = ""
             remaining -= 1
         }
+
+        // Menu window mode: update AppState's remainingSeconds and handle completion
+        if isMenuWindowMode {
+            appState?.remainingSeconds = max(0, remaining)
+            if remaining <= 0 {
+                timer?.invalidate()
+                timer = nil
+                unpinMenuBarExtra()
+                onBreakDone?()
+                return
+            }
+        }
+
         countdownLabel?.stringValue = formatTime(remaining)
     }
 

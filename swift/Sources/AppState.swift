@@ -7,13 +7,15 @@ enum BreakPosition: String, CaseIterable, Equatable {
     case topLeft = "top_left"
     case center = "center"
     case fullscreen = "fullscreen"
+    case menuWindow = "menu_window"
 
     var label: String {
         switch self {
-        case .topRight: return "右上角"
-        case .topLeft: return "左上角"
-        case .center: return "屏幕中央"
-        case .fullscreen: return "全屏强制"
+        case .topRight: return L.posTopRight
+        case .topLeft: return L.posTopLeft
+        case .center: return L.posCenter
+        case .fullscreen: return L.posFullscreen
+        case .menuWindow: return L.posMenuWindow
         }
     }
 }
@@ -22,40 +24,42 @@ struct AppConfig: Equatable {
     var workMinutes: Int = 60
     var breakMinutes: Int = 2
     var dailyGoal: Int = 8
-    var reminders: [String] = ["该起来走走了", "该喝水了"]
+    var reminders: [String] = [L.defaultReminder1, L.defaultReminder2]
     var soundEnabled: Bool = true
     var breakDetectSound: Bool = false
-    var breakPosition: BreakPosition = .topRight
+    var breakPosition: BreakPosition = .menuWindow
     var breakConfirm: Bool = true
+    var language: AppLanguage = .system
 }
 
 struct Badge {
     let days: Int
-    let name: String
-    let desc: String
     let icon: String
+
+    var name: String { L.badgeName(days) }
+    var desc: String { L.badgeDesc(days) }
 }
 
 let allBadges: [Badge] = [
-    Badge(days: 3, name: "迈出第一步", desc: "连续达标 3 天", icon: "👣"),
-    Badge(days: 7, name: "初心者", desc: "连续达标 7 天", icon: "🌱"),
-    Badge(days: 14, name: "习惯养成", desc: "连续达标 14 天", icon: "🌿"),
-    Badge(days: 21, name: "三周达人", desc: "连续达标 21 天", icon: "🌳"),
-    Badge(days: 30, name: "健康卫士", desc: "连续达标 30 天", icon: "🛡️"),
-    Badge(days: 50, name: "半百之约", desc: "连续达标 50 天", icon: "⭐"),
-    Badge(days: 60, name: "钢铁意志", desc: "连续达标 60 天", icon: "💪"),
-    Badge(days: 90, name: "季度王者", desc: "连续达标 90 天", icon: "👑"),
-    Badge(days: 100, name: "传奇坚持", desc: "连续达标 100 天", icon: "🏆"),
-    Badge(days: 180, name: "半年之星", desc: "连续达标 180 天", icon: "💎"),
-    Badge(days: 365, name: "年度传说", desc: "连续达标 365 天", icon: "🐉"),
+    Badge(days: 3, icon: "👣"),
+    Badge(days: 7, icon: "🌱"),
+    Badge(days: 14, icon: "🌿"),
+    Badge(days: 21, icon: "🌳"),
+    Badge(days: 30, icon: "🛡️"),
+    Badge(days: 50, icon: "⭐"),
+    Badge(days: 60, icon: "💪"),
+    Badge(days: 90, icon: "👑"),
+    Badge(days: 100, icon: "🏆"),
+    Badge(days: 180, icon: "💎"),
+    Badge(days: 365, icon: "🐉"),
 ]
 
 enum AppPhase: String {
-    case working    // 工作倒计时
-    case alerting   // 弹窗提醒中
-    case breaking   // 休息倒计时（遮罩）
-    case waiting    // 等用户确认回来
-    case paused     // 手动暂停
+    case working
+    case alerting
+    case breaking
+    case waiting
+    case paused
 }
 
 @MainActor
@@ -66,6 +70,10 @@ final class AppState: ObservableObject {
     @Published var todayDone: Int = 0
     @Published var currentStreak: Int = 0
     @Published var maxStreak: Int = 0
+    @Published var breakWarning: String = ""
+    @Published var breakSkipCount: Int = 0
+    let breakSkipNeeded = 3
+    @Published var weekData: [(String, Int)] = []
 
     private var targetTime: Date = Date()
     private var pausedRemaining: Int = 0
@@ -80,10 +88,14 @@ final class AppState: ObservableObject {
 
     init() {
         config = db.loadConfig()
+        L.lang = config.language
         lastSavedConfig = config
         overlayManager.appState = self
         overlayManager.onForceEnd = { [weak self] in
             self?.forceEndBreak()
+        }
+        overlayManager.onBreakDone = { [weak self] in
+            self?.onBreakDone()
         }
         startWork()
         refreshStats()
@@ -115,17 +127,22 @@ final class AppState: ObservableObject {
 
     private func tick() {
         guard phase == .working || phase == .breaking else { return }
-        remainingSeconds = max(0, Int(targetTime.timeIntervalSinceNow))
+        // Menu window break: overlay manages countdown with idle detection
+        if phase == .breaking && config.breakPosition == .menuWindow { return }
+        let newVal = max(0, Int(targetTime.timeIntervalSinceNow))
+        if newVal != remainingSeconds {
+            remainingSeconds = newVal
+        }
         if remainingSeconds <= 0 {
             if phase == .working { onWorkDone() }
             else if phase == .breaking { onBreakDone() }
         }
     }
 
-    // MARK: - Work Done → Alert
+    // MARK: - Work Done -> Alert
 
     private func onWorkDone() {
-        let reminder = config.reminders.randomElement() ?? "该休息了"
+        let reminder = config.reminders.randomElement() ?? L.defaultBreakReminder
         playSound("Glass")
 
         if config.breakConfirm {
@@ -143,10 +160,10 @@ final class AppState: ObservableObject {
 
     private func showBreakAlert(_ message: String) {
         let alert = NSAlert()
-        alert.messageText = "健康打卡"
+        alert.messageText = L.healthCheckIn
         alert.informativeText = message
         alert.alertStyle = .warning
-        alert.addButton(withTitle: "好的，我去休息")
+        alert.addButton(withTitle: L.alertConfirmBreak)
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
         alert.runModal()
@@ -160,16 +177,25 @@ final class AppState: ObservableObject {
 
     private func startBreak() {
         phase = .breaking
+        breakWarning = ""
+        breakSkipCount = 0
         let secs = config.breakMinutes * 60
-        targetTime = Date().addingTimeInterval(Double(secs))
         remainingSeconds = secs
-        overlayManager.show(seconds: secs)
-        startTicking()
+
+        if config.breakPosition == .menuWindow {
+            // Menu window mode: overlay manages idle-aware countdown
+            overlayManager.showMenuWindow(seconds: secs)
+        } else {
+            targetTime = Date().addingTimeInterval(Double(secs))
+            overlayManager.show(seconds: secs)
+            startTicking()
+        }
     }
 
     private func onBreakDone() {
         phase = .waiting
         remainingSeconds = 0
+        breakWarning = ""
         overlayManager.hide()
 
         db.addRecord()
@@ -180,10 +206,10 @@ final class AppState: ObservableObject {
 
     private func showReturnDialog() {
         let alert = NSAlert()
-        alert.messageText = "健康打卡"
-        alert.informativeText = "休息结束啦！准备好继续工作了吗？"
+        alert.messageText = L.healthCheckIn
+        alert.informativeText = L.breakOverReturnPrompt
         alert.alertStyle = .informational
-        alert.addButton(withTitle: "我回来了")
+        alert.addButton(withTitle: L.alertImBack)
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
         alert.runModal()
@@ -222,6 +248,7 @@ final class AppState: ObservableObject {
         todayDone = db.todayCount()
         currentStreak = db.streakDays(goal: config.dailyGoal)
         maxStreak = db.maxStreakDays(goal: config.dailyGoal)
+        weekData = db.recent7DaysCounts()
     }
 
     @Published var showRestartPrompt = false
@@ -232,10 +259,28 @@ final class AppState: ObservableObject {
         refreshStats()
         lastSavedConfig = newConfig
 
+        // Update global language
+        if newConfig.language != old.language {
+            L.lang = newConfig.language
+        }
+
         if (newConfig.workMinutes != old.workMinutes && (phase == .working || phase == .paused)) ||
            (newConfig.breakMinutes != old.breakMinutes && phase == .breaking) {
             showRestartPrompt = true
         }
+    }
+
+    func resetToDefaults() {
+        db.resetConfig()
+        config = db.loadConfig()
+        lastSavedConfig = config
+        L.lang = config.language
+        timer?.invalidate()
+        alertRepeatTimer?.invalidate()
+        overlayManager.hide()
+        pausedPhase = nil
+        startWork()
+        refreshStats()
     }
 
     func restartCurrentPhase() {
@@ -265,11 +310,11 @@ final class AppState: ObservableObject {
 
     var phaseLabel: String {
         switch phase {
-        case .working: return "工作中"
-        case .alerting: return "该休息了！"
-        case .breaking: return "休息中"
-        case .waiting: return "等待确认..."
-        case .paused: return "已暂停"
+        case .working: return L.phaseWorking
+        case .alerting: return L.phaseAlerting
+        case .breaking: return L.phaseBreaking
+        case .waiting: return L.phaseWaiting
+        case .paused: return L.phasePaused
         }
     }
 
@@ -279,11 +324,11 @@ final class AppState: ObservableObject {
 
     var encourageText: String {
         let gap = db.daysSinceLastGoal(goal: config.dailyGoal)
-        if gap == 0 { return "今日已达标，继续保持！" }
-        if gap == -1 { return "还没有达标记录，今天开始吧！" }
-        if gap == 1 { return "昨天达标了，今天也加油！" }
-        if gap <= 3 { return "已经 \(gap) 天没达标了，重新开始！" }
-        return "距上次达标已 \(gap) 天，今天是新的开始！"
+        if gap == 0 { return L.encourageGoalMet }
+        if gap == -1 { return L.encourageNoRecord }
+        if gap == 1 { return L.encourageYesterday }
+        if gap <= 3 { return L.encourageGapShort(gap) }
+        return L.encourageGapLong(gap)
     }
 
     var earnedBadge: Badge? {
@@ -304,11 +349,19 @@ final class AppState: ObservableObject {
         NSSound(named: "Tink")?.play()
     }
 
+    func skipBreakClicked() {
+        breakSkipCount += 1
+        if breakSkipCount >= breakSkipNeeded {
+            forceEndBreak()
+        }
+    }
+
     func forceEndBreak() {
         guard phase == .breaking else { return }
         timer?.invalidate()
         alertRepeatTimer?.invalidate()
         alertRepeatTimer = nil
+        breakWarning = ""
         overlayManager.hide()
         startWork()
     }

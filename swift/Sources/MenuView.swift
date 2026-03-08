@@ -4,41 +4,121 @@ struct MenuView: View {
     @EnvironmentObject var state: AppState
     @Environment(\.openWindow) private var openWindow
 
+    private var isMenuWindowBreak: Bool {
+        state.phase == .breaking && state.config.breakPosition == .menuWindow
+    }
+
     var body: some View {
         VStack(spacing: 12) {
             // Circular timer
             ZStack {
-                // Track
                 Circle()
-                    .stroke(.quaternary, lineWidth: 5)
-                // Progress
+                    .stroke(.quaternary, lineWidth: 3)
                 Circle()
                     .trim(from: 0, to: timerProgress)
                     .stroke(
                         phaseColor.gradient,
-                        style: StrokeStyle(lineWidth: 5, lineCap: .round)
+                        style: StrokeStyle(lineWidth: 3, lineCap: .round)
                     )
                     .rotationEffect(.degrees(-90))
                     .animation(.linear(duration: 1), value: timerProgress)
 
                 VStack(spacing: 2) {
                     Text(state.formattedTime)
-                        .font(.system(size: 32, weight: .light, design: .monospaced))
+                        .font(.system(size: 28, weight: .light, design: .monospaced))
                     Text(state.phaseLabel)
-                        .font(.caption)
+                        .font(.system(size: 13))
                         .foregroundStyle(.secondary)
                 }
             }
-            .frame(width: 110, height: 110)
+            .frame(width: 120, height: 120)
             .padding(.top, 4)
 
+            // Menu window break: show break-specific content
+            if isMenuWindowBreak {
+                menuWindowBreakContent
+            } else {
+                normalContent
+            }
+
+            Divider().padding(.horizontal, 4)
+
+            // Controls
+            if isMenuWindowBreak {
+                menuWindowBreakControls
+            } else {
+                normalControls
+            }
+
+            Divider().padding(.horizontal, 4)
+
+            Button {
+                NSApp.terminate(nil)
+            } label: {
+                Text(L.quitApp)
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderless)
+        }
+        .padding(16)
+        .frame(width: 240)
+    }
+
+    // MARK: - Menu Window Break Content
+
+    private var menuWindowBreakContent: some View {
+        VStack(spacing: 8) {
+            Text(L.breakFloatMsg)
+                .font(.callout)
+                .foregroundStyle(.orange)
+
+            if !state.breakWarning.isEmpty {
+                HStack(spacing: 4) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.orange)
+                    Text(state.breakWarning)
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(.orange.opacity(0.1), in: RoundedRectangle(cornerRadius: 6))
+            }
+        }
+    }
+
+    private var menuWindowBreakControls: some View {
+        HStack {
+            Spacer()
+            Button {
+                state.skipBreakClicked()
+            } label: {
+                Text(L.skipButton(state.breakSkipCount, state.breakSkipNeeded))
+                    .font(.system(size: 11))
+                    .foregroundStyle(.tertiary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 4)
+                    .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
+            }
+            .buttonStyle(.borderless)
+            Spacer()
+        }
+    }
+
+    // MARK: - Normal Content
+
+    private var normalContent: some View {
+        Group {
             // Today progress
             HStack(spacing: 16) {
                 VStack(spacing: 2) {
                     Text("\(state.todayDone)")
                         .font(.title3.bold().monospacedDigit())
                         .foregroundStyle(.green)
-                    Text("已完成")
+                    Text(L.done)
                         .font(.system(size: 9))
                         .foregroundStyle(.secondary)
                 }
@@ -47,7 +127,7 @@ struct MenuView: View {
                     Text("\(state.config.dailyGoal)")
                         .font(.title3.bold().monospacedDigit())
                         .foregroundStyle(.secondary)
-                    Text("目标")
+                    Text(L.goal)
                         .font(.system(size: 9))
                         .foregroundStyle(.secondary)
                 }
@@ -61,16 +141,15 @@ struct MenuView: View {
                             .font(.title3.bold().monospacedDigit())
                             .foregroundStyle(.orange)
                     }
-                    Text("连续")
+                    Text(L.streak)
                         .font(.system(size: 9))
                         .foregroundStyle(.secondary)
                 }
             }
 
             // 7-day pixels
-            let week = Database.shared.recent7DaysCounts()
             HStack(spacing: 4) {
-                ForEach(Array(week.enumerated()), id: \.offset) { _, item in
+                ForEach(Array(state.weekData.enumerated()), id: \.offset) { _, item in
                     VStack(spacing: 3) {
                         RoundedRectangle(cornerRadius: 3)
                             .fill(pixelColor(count: item.1, goal: state.config.dailyGoal))
@@ -96,20 +175,21 @@ struct MenuView: View {
                         .foregroundStyle(.green)
                 }
             } else if let next = state.nextBadge {
+                let hint = L.badgeNext(icon: next.icon, name: next.name, days: next.days - state.currentStreak)
                 HStack(spacing: 0) {
-                    Text("🎯 距 ")
+                    Text("🎯 \(hint.prefix)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text("\(next.icon)\(next.name)")
+                    Text(hint.badge)
                         .font(.callout.bold())
                         .foregroundStyle(.green)
-                    Text(" 还差 ")
+                    Text(hint.mid)
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text("\(next.days - state.currentStreak)")
+                    Text(hint.count)
                         .font(.caption.bold().monospacedDigit())
                         .foregroundStyle(.orange)
-                    Text(" 天")
+                    Text(hint.suffix)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -123,7 +203,7 @@ struct MenuView: View {
                     HStack(spacing: 4) {
                         Image(systemName: "arrow.down.circle.fill")
                             .foregroundStyle(.blue)
-                        Text("v\(ver) 可用，点击更新")
+                        Text(L.updateAvailable(ver))
                             .font(.caption)
                             .foregroundStyle(.blue)
                     }
@@ -133,56 +213,43 @@ struct MenuView: View {
                 }
                 .buttonStyle(.borderless)
             }
-
-            Divider().padding(.horizontal, 4)
-
-            // Controls
-            HStack {
-                controlButton(
-                    title: state.phase == .paused ? "继续" : "暂停",
-                    icon: state.phase == .paused ? "play.fill" : "pause.fill"
-                ) {
-                    state.togglePause()
-                }
-                .disabled(state.phase == .alerting || state.phase == .waiting)
-
-                controlButton(title: "重置", icon: "arrow.counterclockwise") {
-                    state.reset()
-                }
-
-                Spacer()
-
-                controlButton(title: "成就", icon: "trophy") {
-                    openWindow(id: "stats")
-                    bringToFront()
-                }
-
-                controlButton(title: "帮助", icon: "questionmark.circle") {
-                    openWindow(id: "helpguide")
-                    bringToFront()
-                }
-
-                controlButton(title: "设置", icon: "gear") {
-                    openWindow(id: "settings")
-                    bringToFront()
-                }
-            }
-
-            Divider().padding(.horizontal, 4)
-
-            Button {
-                NSApp.terminate(nil)
-            } label: {
-                Text("退出 HealthTick")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderless)
         }
-        .padding(16)
-        .frame(width: 240)
     }
+
+    private var normalControls: some View {
+        HStack {
+            controlButton(
+                title: state.phase == .paused ? L.resume : L.pause,
+                icon: state.phase == .paused ? "play.fill" : "pause.fill"
+            ) {
+                state.togglePause()
+            }
+            .disabled(state.phase == .alerting || state.phase == .waiting)
+
+            controlButton(title: L.resetAction, icon: "arrow.counterclockwise") {
+                state.reset()
+            }
+
+            Spacer()
+
+            controlButton(title: L.achievements, icon: "trophy") {
+                openWindow(id: "stats")
+                bringToFront()
+            }
+
+            controlButton(title: L.help, icon: "questionmark.circle") {
+                openWindow(id: "helpguide")
+                bringToFront()
+            }
+
+            controlButton(title: L.settings, icon: "gear") {
+                openWindow(id: "settings")
+                bringToFront()
+            }
+        }
+    }
+
+    // MARK: - Helpers
 
     private var timerProgress: Double {
         let total: Int

@@ -41,7 +41,6 @@ struct StatsWindowView: View {
         let (mDone, mTotal) = db.monthCompletionRate(goal: goal)
 
         return HStack(spacing: 32) {
-            // Today ring
             VStack(spacing: 6) {
                 ZStack {
                     Circle()
@@ -60,17 +59,16 @@ struct StatsWindowView: View {
                     }
                 }
                 .frame(width: 88, height: 88)
-                Text("今日完成")
+                Text(L.todayDone)
                     .font(.system(size: 11))
                     .foregroundStyle(.tertiary)
             }
 
-            // Stats grid
             HStack(spacing: 24) {
-                heroStat(value: "\(state.currentStreak)", label: "当前连续", icon: "flame.fill", color: .orange)
-                heroStat(value: "\(state.maxStreak)", label: "最长连续", icon: "crown.fill", color: .yellow)
-                heroStat(value: "\(wDone)/\(wTotal)", label: "本周达标", icon: "calendar", color: .purple)
-                heroStat(value: "\(mDone)/\(mTotal)", label: "本月达标", icon: "calendar.badge.checkmark", color: .pink)
+                heroStat(value: "\(state.currentStreak)", label: L.currentStreak, icon: "flame.fill", color: .orange)
+                heroStat(value: "\(state.maxStreak)", label: L.maxStreak, icon: "crown.fill", color: .yellow)
+                heroStat(value: "\(wDone)/\(wTotal)", label: L.weekGoal, icon: "calendar", color: .purple)
+                heroStat(value: "\(mDone)/\(mTotal)", label: L.monthGoal, icon: "calendar.badge.checkmark", color: .pink)
             }
         }
         .padding(.vertical, 4)
@@ -103,12 +101,12 @@ struct StatsWindowView: View {
 
         return VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("近 7 天")
+                Text(L.last7Days)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.secondary)
                 Spacer()
                 let total = data.reduce(0) { $0 + $1.1 }
-                Text("共 \(total) 次")
+                Text(L.totalTimes(total))
                     .font(.system(size: 11))
                     .foregroundStyle(.tertiary)
             }
@@ -149,7 +147,7 @@ struct StatsWindowView: View {
     private func shortDay(_ s: String) -> String {
         let p = s.split(separator: "-")
         guard p.count == 3, let d = Int(p[2]) else { return s }
-        return "\(d)日"
+        return L.dayLabel(d)
     }
 
     // MARK: - Heatmap
@@ -162,12 +160,12 @@ struct StatsWindowView: View {
 
         return VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("近 30 天")
+                Text(L.last30Days)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.secondary)
                 Spacer()
                 let goalDays = data.filter { $0.1 >= goal }.count
-                Text("\(goalDays) 天达标")
+                Text(L.goalDays(goalDays))
                     .font(.system(size: 11))
                     .foregroundStyle(.tertiary)
             }
@@ -188,7 +186,7 @@ struct StatsWindowView: View {
                                             .font(.system(size: 8))
                                             .foregroundStyle(item.1 > 0 ? .white.opacity(0.7) : .gray.opacity(0.3))
                                     )
-                                    .help("\(shortDate(item.0)): \(item.1)次")
+                                    .help("\(shortDate(item.0)): \(item.1)")
                             } else {
                                 Color.clear.frame(width: 30, height: 30)
                             }
@@ -198,13 +196,13 @@ struct StatsWindowView: View {
                 }
 
                 HStack(spacing: 5) {
-                    Text("少").font(.system(size: 10)).foregroundStyle(.quaternary)
+                    Text(L.less).font(.system(size: 10)).foregroundStyle(.quaternary)
                     ForEach([0.0, 0.25, 0.5, 0.75, 1.0], id: \.self) { r in
                         RoundedRectangle(cornerRadius: 2)
                             .fill(heatColor(ratio: r))
                             .frame(width: 14, height: 14)
                     }
-                    Text("多").font(.system(size: 10)).foregroundStyle(.quaternary)
+                    Text(L.more).font(.system(size: 10)).foregroundStyle(.quaternary)
                     Spacer()
                 }
                 .padding(.top, 4)
@@ -239,11 +237,11 @@ struct StatsWindowView: View {
 
         return VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text("已获得徽章")
+                Text(L.earnedBadges)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.secondary)
                 Spacer()
-                Text("\(earnedBadges.count) 枚")
+                Text(L.badgeCount(earnedBadges.count))
                     .font(.system(size: 11, weight: .medium, design: .rounded))
                     .foregroundStyle(.tertiary)
                     .padding(.horizontal, 8)
@@ -260,11 +258,11 @@ struct StatsWindowView: View {
                     Text("?")
                         .font(.system(size: 48))
                         .foregroundStyle(.quaternary)
-                    Text("坚持打卡解锁徽章")
+                    Text(L.noBadgesYet)
                         .font(.system(size: 13))
                         .foregroundStyle(.tertiary)
                     if let next = nextBadge {
-                        Text("连续达标 \(next.days) 天即可获得第一枚")
+                        Text(L.firstBadgeHint(next.days))
                             .font(.system(size: 11))
                             .foregroundStyle(.quaternary)
                     }
@@ -284,18 +282,16 @@ struct StatsWindowView: View {
 
             Spacer(minLength: 0)
 
-            // Next goal hint
             if let next = nextBadge {
                 VStack(spacing: 6) {
                     HStack(spacing: 6) {
                         Text("🎯")
                             .font(.system(size: 16))
-                        Text("下一个目标")
+                        Text(L.nextGoal)
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(.green)
                     }
 
-                    // Progress bar
                     let progress = min(1.0, Double(state.maxStreak) / Double(next.days))
                     GeometryReader { geo in
                         ZStack(alignment: .leading) {
@@ -308,7 +304,7 @@ struct StatsWindowView: View {
                     }
                     .frame(height: 6)
 
-                    Text("再坚持 \(next.days - state.maxStreak) 天解锁新徽章")
+                    Text(L.daysToUnlock(next.days - state.maxStreak))
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(.secondary)
                 }

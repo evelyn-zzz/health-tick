@@ -49,23 +49,21 @@ final class UpdateChecker: ObservableObject {
                 self.isChecking = false
 
                 if let error {
-                    if !silent { self.checkError = "网络错误: \(error.localizedDescription)" }
+                    if !silent { self.checkError = L.networkError(error.localizedDescription) }
                     return
                 }
                 guard let data,
                       let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                       let tagName = json["tag_name"] as? String else {
-                    if !silent { self.checkError = "当前已是最新版本 v\(appVersion)" }
+                    if !silent { self.showNoUpdateAlert() }
                     return
                 }
 
                 let remote = tagName.trimmingCharacters(in: CharacterSet(charactersIn: "vV"))
                 self.latestVersion = remote
 
-                // Find platform-specific .dmg asset
                 let platformKey = isAppleSilicon ? "Apple-Silicon" : "Intel"
                 if let assets = json["assets"] as? [[String: Any]] {
-                    // First: match platform-specific DMG
                     for asset in assets {
                         if let name = asset["name"] as? String,
                            let url = asset["browser_download_url"] as? String,
@@ -74,7 +72,6 @@ final class UpdateChecker: ObservableObject {
                             break
                         }
                     }
-                    // Fallback: any DMG
                     if self.downloadURL == nil {
                         for asset in assets {
                             if let name = asset["name"] as? String,
@@ -86,7 +83,6 @@ final class UpdateChecker: ObservableObject {
                         }
                     }
                 }
-                // Fallback to release page
                 if self.downloadURL == nil, let htmlURL = json["html_url"] as? String {
                     self.downloadURL = htmlURL
                 }
@@ -95,10 +91,22 @@ final class UpdateChecker: ObservableObject {
                     self.hasUpdate = true
                     if !silent { self.showUpdateAlert(version: remote) }
                 } else {
-                    if !silent { self.checkError = "已是最新版本 v\(appVersion)" }
+                    if !silent { self.showNoUpdateAlert() }
                 }
             }
         }.resume()
+    }
+
+    private func showNoUpdateAlert() {
+        let alert = NSAlert()
+        alert.messageText = L.noUpdateTitle
+        alert.informativeText = L.noUpdateMsg(appVersion)
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "OK")
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate(ignoringOtherApps: true)
+        alert.runModal()
+        NSApp.setActivationPolicy(.accessory)
     }
 
     func showUpdateAlertPublic() {
@@ -109,11 +117,11 @@ final class UpdateChecker: ObservableObject {
     private func showUpdateAlert(version: String) {
         let arch = isAppleSilicon ? "Apple Silicon" : "Intel"
         let alert = NSAlert()
-        alert.messageText = "发现新版本"
-        alert.informativeText = "HealthTick v\(version) 已发布（当前 v\(appVersion)）。\n将为你下载 \(arch) 版本到「下载」文件夹。"
+        alert.messageText = L.newVersionFound
+        alert.informativeText = L.updateInfo(version: version, currentVersion: appVersion, arch: arch)
         alert.alertStyle = .informational
-        alert.addButton(withTitle: "立即下载")
-        alert.addButton(withTitle: "稍后再说")
+        alert.addButton(withTitle: L.downloadNow)
+        alert.addButton(withTitle: L.laterAction)
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
         let resp = alert.runModal()
@@ -137,12 +145,11 @@ final class UpdateChecker: ObservableObject {
                 guard let self else { return }
                 self.isDownloading = false
                 if let error {
-                    self.checkError = "下载失败: \(error.localizedDescription)"
+                    self.checkError = L.downloadFailed(error.localizedDescription)
                     return
                 }
                 guard let tempURL else { return }
 
-                // Move to Downloads folder
                 let downloads = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first!
                 let fileName = url.lastPathComponent
                 let dest = downloads.appendingPathComponent(fileName)
@@ -152,7 +159,7 @@ final class UpdateChecker: ObservableObject {
                     try FileManager.default.moveItem(at: tempURL, to: dest)
                     self.showDownloadComplete(file: dest)
                 } catch {
-                    self.checkError = "保存失败: \(error.localizedDescription)"
+                    self.checkError = L.saveFailed(error.localizedDescription)
                 }
             }
         }
@@ -164,11 +171,11 @@ final class UpdateChecker: ObservableObject {
 
     private func showDownloadComplete(file: URL) {
         let alert = NSAlert()
-        alert.messageText = "下载完成"
-        alert.informativeText = "已保存到「下载」文件夹。\n点击「安装并退出」将打开 DMG 并退出当前应用，方便你拖入替换。"
+        alert.messageText = L.downloadComplete
+        alert.informativeText = L.downloadCompleteMsg
         alert.alertStyle = .informational
-        alert.addButton(withTitle: "安装并退出")
-        alert.addButton(withTitle: "稍后安装")
+        alert.addButton(withTitle: L.installAndQuit)
+        alert.addButton(withTitle: L.installLater)
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
         let resp = alert.runModal()
@@ -206,7 +213,6 @@ private class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
     }
 
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
-        // Copy to temp so it survives delegate callback
         let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".dmg")
         try? FileManager.default.copyItem(at: location, to: tmp)
         onComplete(tmp, nil)

@@ -7,7 +7,9 @@ final class Database {
     private let dbPath: String
 
     private init() {
-        let dir = NSHomeDirectory() + "/.health-tick"
+        let bundleId = Bundle.main.bundleIdentifier ?? "com.lifedever.healthtick"
+        let suffix = bundleId.hasSuffix(".dev") ? "-dev" : ""
+        let dir = NSHomeDirectory() + "/.health-tick\(suffix)"
         try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
         dbPath = dir + "/data.db"
         open()
@@ -32,16 +34,16 @@ final class Database {
                 value TEXT NOT NULL
             );
         """)
-        // 默认配置
         let defaults: [(String, String)] = [
             ("work_minutes", "60"),
             ("break_minutes", "2"),
             ("daily_goal", "8"),
-            ("reminders", "[\"该起来走走了\",\"该喝水了\"]"),
+            ("reminders", "[]"),
             ("sound_enabled", "1"),
             ("break_detect_sound", "0"),
-            ("break_position", "top_right"),
+            ("break_position", "menu_window"),
             ("break_confirm", "1"),
+            ("language", "system"),
         ]
         for (key, value) in defaults {
             exec("INSERT OR IGNORE INTO config (key, value) VALUES ('\(key)', '\(value)')")
@@ -68,18 +70,29 @@ final class Database {
                 case "daily_goal": config.dailyGoal = Int(value) ?? 8
                 case "reminders":
                     if let data = value.data(using: .utf8),
-                       let arr = try? JSONDecoder().decode([String].self, from: data) {
+                       let arr = try? JSONDecoder().decode([String].self, from: data),
+                       !arr.isEmpty {
                         config.reminders = arr
                     }
                 case "sound_enabled": config.soundEnabled = value == "1"
                 case "break_detect_sound": config.breakDetectSound = value == "1"
                 case "break_position": config.breakPosition = BreakPosition(rawValue: value) ?? .topRight
                 case "break_confirm": config.breakConfirm = value == "1"
+                case "language": config.language = AppLanguage(rawValue: value) ?? .system
                 default: break
                 }
             }
         }
         sqlite3_finalize(stmt)
+
+        // Set global language immediately
+        L.lang = config.language
+
+        // If reminders are empty (fresh DB), set defaults based on resolved language
+        if config.reminders.isEmpty || config.reminders == ["[]"] {
+            config.reminders = [L.defaultReminder1, L.defaultReminder2]
+        }
+
         return config
     }
 
@@ -94,6 +107,7 @@ final class Database {
         exec("INSERT OR REPLACE INTO config (key, value) VALUES ('break_detect_sound', '\(config.breakDetectSound ? "1" : "0")')")
         exec("INSERT OR REPLACE INTO config (key, value) VALUES ('break_position', '\(config.breakPosition.rawValue)')")
         exec("INSERT OR REPLACE INTO config (key, value) VALUES ('break_confirm', '\(config.breakConfirm ? "1" : "0")')")
+        exec("INSERT OR REPLACE INTO config (key, value) VALUES ('language', '\(config.language.rawValue)')")
     }
 
     // MARK: - Records
@@ -264,6 +278,11 @@ final class Database {
 
     func resetAllData() {
         exec("DELETE FROM records")
+    }
+
+    func resetConfig() {
+        exec("DELETE FROM config")
+        createTables()
     }
 
     // MARK: - Helpers
