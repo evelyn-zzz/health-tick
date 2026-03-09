@@ -17,6 +17,7 @@ description: Build and publish a new HealthTick release. Use when the user says 
    - Create `HealthTick.app` bundles for Apple-Silicon and Intel
    - arm64 binary → Apple-Silicon DMG, x86_64 binary → Intel DMG
    - Each app bundle contains: binary, Info.plist, Resources, ad-hoc signed
+   - **MANDATORY**: Add Applications symlink in each DMG staging folder: `ln -s /Applications "$STAGE/${LABEL}/Applications"` — this enables drag-to-install in Finder
    - Stage in `/tmp/health-tick-release-{VERSION}/`
 6. **Git commit & push**: `git add -A && git commit -m "v{VERSION}" && git tag v{VERSION} && git push origin main --tags`
    - Check tag doesn't already exist before proceeding
