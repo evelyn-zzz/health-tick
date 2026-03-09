@@ -1,8 +1,3 @@
 .build/
 .swiftpm/
-swift/.build/
-swift/.swiftpm/
-__pycache__/
-venv/
-*.pyc
 .DS_Store

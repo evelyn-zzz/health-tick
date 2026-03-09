@@ -33,20 +33,18 @@ jobs:
           fi
 
       - name: Build (${{ matrix.label }})
-        run: |
-          cd swift
-          swift build -c release --arch ${{ matrix.arch }}
+        run: swift build -c release --arch ${{ matrix.arch }}
 
       - name: Package app
         run: |
           APP_DIR="HealthTick.app/Contents/MacOS"
           mkdir -p "$APP_DIR"
-          cp swift/.build/release/HealthTick "$APP_DIR/"
-          cp swift/Sources/Info.plist "HealthTick.app/Contents/"
+          cp .build/release/HealthTick "$APP_DIR/"
+          cp Sources/Info.plist "HealthTick.app/Contents/"
           RES_DIR="HealthTick.app/Contents/Resources"
           mkdir -p "$RES_DIR"
-          if [ -d "swift/Sources/Resources" ]; then
-            cp -R swift/Sources/Resources/* "$RES_DIR/"
+          if [ -d "Sources/Resources" ]; then
+            cp -R Sources/Resources/* "$RES_DIR/"
           fi
 
       - name: Sign app
