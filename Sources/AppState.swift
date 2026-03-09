@@ -196,7 +196,7 @@ final class AppState: ObservableObject {
         overlayManager.onBreakDone = { [weak self] in
             self?.onBreakDone()
         }
-        startWork()
+        restoreTimerState()
         refreshStats()
 
         startQuietCheckTimer()
@@ -208,12 +208,50 @@ final class AppState: ObservableObject {
             }
         }
 
+        // Save timer state on app quit
+        NotificationCenter.default.addObserver(forName: NSApplication.willTerminateNotification, object: nil, queue: .main) { [weak self] _ in
+            self?.saveTimerState()
+        }
+
         // Auto-save when config changes
         configWatcher = $config
             .debounce(for: .milliseconds(300), scheduler: RunLoop.main)
             .sink { [weak self] newConfig in
                 self?.autoSave(newConfig)
             }
+    }
+
+    // MARK: - Timer State Persistence
+
+    private func restoreTimerState() {
+        let saved = db.loadTimerState()
+        let secs = saved.pausedRemaining ?? 0
+        switch saved.phase {
+        case "working" where secs > 0:
+            phase = .working
+            remainingSeconds = secs
+            targetTime = Date().addingTimeInterval(Double(secs))
+            currentSessionId = db.startSession(workMinutes: config.workMinutes, breakMinutes: config.breakMinutes, dailyGoal: config.dailyGoal)
+            startTicking()
+        case "paused" where secs > 0:
+            phase = .paused
+            pausedRemaining = secs
+            pausedPhase = .working
+            remainingSeconds = secs
+        default:
+            startWork()
+        }
+    }
+
+    private func saveTimerState() {
+        switch phase {
+        case .working:
+            db.saveTimerState(phase: "working", targetTime: nil, pausedRemaining: remainingSeconds)
+        case .paused:
+            db.saveTimerState(phase: "paused", targetTime: nil, pausedRemaining: pausedRemaining)
+        default:
+            db.clearTimerState()
+        }
     }
 
     // MARK: - Timer
@@ -223,6 +261,7 @@ final class AppState: ObservableObject {
         targetTime = Date().addingTimeInterval(Double(config.workMinutes * 60))
         remainingSeconds = config.workMinutes * 60
         currentSessionId = db.startSession(workMinutes: config.workMinutes, breakMinutes: config.breakMinutes, dailyGoal: config.dailyGoal)
+        saveTimerState()
         startTicking()
     }
 
@@ -338,11 +377,13 @@ final class AppState: ObservableObject {
             targetTime = Date().addingTimeInterval(Double(pausedRemaining))
             remainingSeconds = pausedRemaining
             startTicking()
+            saveTimerState()
         } else if phase == .working || phase == .breaking {
             pausedRemaining = remainingSeconds
             pausedPhase = phase
             phase = .paused
             timer?.invalidate()
+            saveTimerState()
         }
     }
 

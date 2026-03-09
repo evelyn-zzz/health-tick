@@ -366,6 +366,47 @@ final class Database {
         exec("INSERT OR REPLACE INTO config (key, value) VALUES ('onboarding_completed', '0')")
     }
 
+    // MARK: - Timer State Persistence
+
+    func saveTimerState(phase: String, targetTime: Date?, pausedRemaining: Int?) {
+        let iso = ISO8601DateFormatter()
+        let targetStr = targetTime.map { iso.string(from: $0) } ?? ""
+        let pausedStr = pausedRemaining.map { "\($0)" } ?? ""
+        exec("INSERT OR REPLACE INTO config (key, value) VALUES ('timer_phase', '\(phase)')")
+        exec("INSERT OR REPLACE INTO config (key, value) VALUES ('timer_target_time', '\(targetStr)')")
+        exec("INSERT OR REPLACE INTO config (key, value) VALUES ('timer_paused_remaining', '\(pausedStr)')")
+    }
+
+    func loadTimerState() -> (phase: String, targetTime: Date?, pausedRemaining: Int?) {
+        var phase = ""
+        var targetStr = ""
+        var pausedStr = ""
+        var stmt: OpaquePointer?
+        let sql = "SELECT key, value FROM config WHERE key IN ('timer_phase', 'timer_target_time', 'timer_paused_remaining')"
+        if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                let key = String(cString: sqlite3_column_text(stmt, 0))
+                let value = String(cString: sqlite3_column_text(stmt, 1))
+                switch key {
+                case "timer_phase": phase = value
+                case "timer_target_time": targetStr = value
+                case "timer_paused_remaining": pausedStr = value
+                default: break
+                }
+            }
+        }
+        sqlite3_finalize(stmt)
+
+        let iso = ISO8601DateFormatter()
+        let targetTime = targetStr.isEmpty ? nil : iso.date(from: targetStr)
+        let pausedRemaining = pausedStr.isEmpty ? nil : Int(pausedStr)
+        return (phase, targetTime, pausedRemaining)
+    }
+
+    func clearTimerState() {
+        exec("DELETE FROM config WHERE key IN ('timer_phase', 'timer_target_time', 'timer_paused_remaining')")
+    }
+
     // MARK: - Reset
 
     func resetAllData() {
