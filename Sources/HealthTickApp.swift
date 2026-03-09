@@ -19,7 +19,9 @@ struct HealthTickApp: App {
             SettingsView()
                 .environmentObject(state)
         }
-        .defaultSize(width: 440, height: 520)
+        .defaultSize(width: 440, height: 460)
+        .windowResizability(.contentSize)
+        .windowToolbarStyle(.unified)
         .commands {
             CommandGroup(replacing: .newItem) {}
 

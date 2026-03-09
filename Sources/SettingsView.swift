@@ -2,31 +2,36 @@ import SwiftUI
 import ServiceManagement
 
 struct SettingsView: View {
+    @State private var selectedTab = 0
+
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
             GeneralTab()
                 .tabItem { Label(L.tabGeneral, systemImage: "slider.horizontal.3") }
+                .tag(0)
             ReminderTab()
                 .tabItem { Label(L.tabReminders, systemImage: "text.bubble") }
+                .tag(1)
             AboutTab()
                 .tabItem { Label(L.tabAbout, systemImage: "info.circle") }
+                .tag(2)
         }
-        .frame(width: 440, height: 520)
+        .frame(width: 440)
+        .fixedSize(horizontal: false, vertical: true)
     }
 }
 
 // MARK: - General
 
+private let systemSounds = ["Basso", "Blow", "Bottle", "Frog", "Funk", "Glass", "Hero", "Morse", "Ping", "Pop", "Purr", "Sosumi", "Submarine", "Tink"]
+
 struct GeneralTab: View {
     @EnvironmentObject var state: AppState
-    @State private var resetSettingsStep = 0
     @State private var resetSettingsDone = false
-    @State private var resetDataStep = 0
     @State private var resetDataDone = false
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 16) {
+        VStack(spacing: 12) {
                 // Timer sliders
                 VStack(spacing: 16) {
                     sliderRow(icon: "deskclock.fill", label: L.workDuration, value: Binding(
@@ -50,79 +55,60 @@ struct GeneralTab: View {
 
                 // Break position + toggles
                 VStack(spacing: 0) {
-                    HStack(spacing: 10) {
-                        Image(systemName: "rectangle.inset.filled")
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                            .frame(width: 20)
-                        Text(L.breakWindow)
-                            .font(.callout)
-                        Spacer()
+                    pickerRow(icon: "rectangle.inset.filled", label: L.breakWindow) {
                         Picker("", selection: $state.config.breakPosition) {
                             ForEach(BreakPosition.allCases, id: \.self) { pos in
                                 Text(pos.label).tag(pos)
                             }
                         }
                         .labelsHidden()
-                        .frame(width: 130)
                     }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 6)
-
                     Divider().padding(.leading, 44)
-
                     toggleRow(icon: "hand.raised.fill", label: L.breakConfirm, isOn: $state.config.breakConfirm)
                     Divider().padding(.leading, 44)
-                    toggleRow(icon: "speaker.wave.2.fill", label: L.reminderSound, isOn: $state.config.soundEnabled)
+                    soundRow(
+                        icon: "speaker.wave.2.fill",
+                        label: L.reminderSound,
+                        isOn: $state.config.soundEnabled,
+                        sound: $state.config.alertSound
+                    )
                     Divider().padding(.leading, 44)
-                    toggleRow(icon: "ear.fill", label: L.activityDetectSound, isOn: $state.config.breakDetectSound)
+                    soundRow(
+                        icon: "ear.fill",
+                        label: L.activityDetectSound,
+                        isOn: $state.config.breakDetectSound,
+                        sound: $state.config.breakDetectSoundName
+                    )
                 }
                 .padding(.vertical, 4)
                 .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
 
-                // Language + Launch at login
+                // Language + Appearance + Launch at login
                 VStack(spacing: 0) {
-                    HStack(spacing: 10) {
-                        Image(systemName: "globe")
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                            .frame(width: 20)
-                        Text(L.language)
-                            .font(.callout)
-                        Spacer()
+                    pickerRow(icon: "globe", label: L.language) {
                         Picker("", selection: $state.config.language) {
                             ForEach(AppLanguage.allCases, id: \.self) { lang in
                                 Text(lang.displayName).tag(lang)
                             }
                         }
                         .labelsHidden()
-                        .frame(width: 130)
                     }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 6)
-
                     Divider().padding(.leading, 44)
-
-                    HStack(spacing: 10) {
-                        Image(systemName: "power")
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                            .frame(width: 20)
-                        Text(L.launchAtLogin)
-                            .font(.callout)
-                        Spacer()
-                        Toggle("", isOn: Binding(
-                            get: { SMAppService.mainApp.status == .enabled },
-                            set: { enable in
-                                try? enable ? SMAppService.mainApp.register() : SMAppService.mainApp.unregister()
+                    pickerRow(icon: "circle.lefthalf.filled", label: L.appearance) {
+                        Picker("", selection: $state.config.appearance) {
+                            ForEach(AppAppearance.allCases, id: \.self) { a in
+                                Text(a.label).tag(a)
                             }
-                        ))
+                        }
                         .labelsHidden()
-                        .toggleStyle(.switch)
-                        .tint(.green)
                     }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 6)
+                    Divider().padding(.leading, 44)
+                    toggleRow(icon: "power", label: L.launchAtLogin, isOn: Binding(
+                        get: { SMAppService.mainApp.status == .enabled },
+                        set: { enable in
+                            try? enable ? SMAppService.mainApp.register() : SMAppService.mainApp.unregister()
+                        }
+                    ))
                 }
                 .padding(.vertical, 4)
                 .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
@@ -130,34 +116,69 @@ struct GeneralTab: View {
                 // Reset section
                 HStack(spacing: 20) {
                     Spacer()
-                    resetButton(
-                        step: $resetSettingsStep,
-                        done: $resetSettingsDone,
-                        label: L.resetSettings,
-                        warning: L.resetSettingsWarning,
-                        confirmLabel: L.resetSettingsConfirm,
-                        doneLabel: L.settingsReset
-                    ) {
-                        state.resetToDefaults()
+
+                    if resetSettingsDone {
+                        HStack(spacing: 4) {
+                            Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                            Text(L.settingsReset).font(.caption).foregroundStyle(.green)
+                        }
+                    } else {
+                        Button {
+                            confirmReset(
+                                title: L.resetSettings,
+                                message: L.resetSettingsWarning
+                            ) {
+                                state.resetToDefaults()
+                                withAnimation { resetSettingsDone = true }
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                                    withAnimation { resetSettingsDone = false }
+                                }
+                            }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "arrow.counterclockwise").font(.caption2)
+                                Text(L.resetSettings).font(.caption)
+                            }
+                            .foregroundStyle(.red.opacity(0.7))
+                        }
+                        .buttonStyle(.borderless)
+                        .handCursor()
                     }
 
-                    resetButton(
-                        step: $resetDataStep,
-                        done: $resetDataDone,
-                        label: L.resetAllData,
-                        warning: L.resetDataWarning,
-                        confirmLabel: L.confirmDelete,
-                        doneLabel: L.dataCleared
-                    ) {
-                        Database.shared.resetAllData()
-                        state.refreshStats()
+                    if resetDataDone {
+                        HStack(spacing: 4) {
+                            Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                            Text(L.dataCleared).font(.caption).foregroundStyle(.green)
+                        }
+                    } else {
+                        Button {
+                            confirmReset(
+                                title: L.resetAllData,
+                                message: L.resetDataWarning
+                            ) {
+                                Database.shared.resetAllData()
+                                state.refreshStats()
+                                withAnimation { resetDataDone = true }
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                                    withAnimation { resetDataDone = false }
+                                }
+                            }
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "arrow.counterclockwise").font(.caption2)
+                                Text(L.resetAllData).font(.caption)
+                            }
+                            .foregroundStyle(.red.opacity(0.7))
+                        }
+                        .buttonStyle(.borderless)
+                        .handCursor()
                     }
+
                     Spacer()
                 }
                 .padding(.top, 4)
-            }
-            .padding(20)
         }
+        .padding(16)
         .alert(L.durationChanged, isPresented: $state.showRestartPrompt) {
             Button(L.restartTimer) { state.restartCurrentPhase() }
             Button(L.laterAction, role: .cancel) {}
@@ -166,81 +187,16 @@ struct GeneralTab: View {
         }
     }
 
-    @ViewBuilder
-    private func resetButton(step: Binding<Int>, done: Binding<Bool>, label: String, warning: String, confirmLabel: String, doneLabel: String, action: @escaping () -> Void) -> some View {
-        if done.wrappedValue {
-            HStack(spacing: 4) {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
-                Text(doneLabel)
-                    .font(.caption)
-                    .foregroundStyle(.green)
-            }
-            .transition(.opacity)
-        } else if step.wrappedValue == 0 {
-            Button {
-                withAnimation { step.wrappedValue = 1 }
-            } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "arrow.counterclockwise")
-                        .font(.caption2)
-                    Text(label)
-                        .font(.caption)
-                }
-                .foregroundStyle(.red.opacity(0.7))
-            }
-            .buttonStyle(.borderless)
-            .handCursor()
-        } else if step.wrappedValue == 1 {
-            VStack(spacing: 6) {
-                Text(warning)
-                    .font(.caption)
-                    .foregroundStyle(.red)
-                    .multilineTextAlignment(.center)
-                HStack(spacing: 12) {
-                    Button(L.cancel) {
-                        withAnimation { step.wrappedValue = 0 }
-                    }
-                    .buttonStyle(.borderless)
-                    .font(.caption)
-
-                    Button(confirmLabel) {
-                        withAnimation { step.wrappedValue = 2 }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.red)
-                    .controlSize(.small)
-                }
-            }
-            .transition(.opacity)
-        } else if step.wrappedValue == 2 {
-            VStack(spacing: 6) {
-                Text(L.finalConfirm)
-                    .font(.caption.bold())
-                    .foregroundStyle(.red)
-                HStack(spacing: 12) {
-                    Button(L.thinkAgain) {
-                        withAnimation { step.wrappedValue = 0 }
-                    }
-                    .buttonStyle(.borderless)
-                    .font(.caption)
-
-                    Button(L.deleteForever) {
-                        action()
-                        withAnimation {
-                            step.wrappedValue = 0
-                            done.wrappedValue = true
-                        }
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                            withAnimation { done.wrappedValue = false }
-                        }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.red)
-                    .controlSize(.small)
-                }
-            }
-            .transition(.opacity)
+    private func confirmReset(title: String, message: String, action: @escaping () -> Void) {
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = message
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: L.confirmDelete)
+        alert.addButton(withTitle: L.cancel)
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            action()
         }
     }
 
@@ -275,6 +231,69 @@ struct GeneralTab: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 6)
+    }
+
+    private func pickerRow<P: View>(icon: String, label: String, @ViewBuilder picker: () -> P) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .frame(width: 20)
+            Text(label)
+                .font(.callout)
+            Spacer()
+            picker()
+                .fixedSize()
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 6)
+    }
+
+    private func soundRow(icon: String, label: String, isOn: Binding<Bool>, sound: Binding<String>) -> some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 10) {
+                Image(systemName: icon)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 20)
+                Text(label)
+                    .font(.callout)
+                Spacer()
+                Toggle("", isOn: isOn)
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .tint(.green)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 6)
+
+            if isOn.wrappedValue {
+                HStack(spacing: 10) {
+                    Spacer().frame(width: 20)
+                    Picker("", selection: sound) {
+                        ForEach(systemSounds, id: \.self) { s in
+                            Text(s).tag(s)
+                        }
+                    }
+                    .labelsHidden()
+                    .fixedSize()
+
+                    Button {
+                        NSSound(named: sound.wrappedValue)?.play()
+                    } label: {
+                        Image(systemName: "play.circle.fill")
+                            .font(.system(size: 16))
+                            .foregroundStyle(.green)
+                    }
+                    .buttonStyle(.borderless)
+                    .handCursor()
+
+                    Spacer()
+                }
+                .padding(.horizontal, 14)
+                .padding(.bottom, 6)
+            }
+        }
     }
 }
 
@@ -478,12 +497,12 @@ struct AboutTab: View {
             HStack(spacing: 4) {
                 Text("Made with")
                 Image(systemName: "heart.fill")
-                    .foregroundStyle(.red.opacity(0.5))
+                    .foregroundStyle(.red.opacity(0.6))
                 Text("for your health")
             }
-            .font(.caption2)
-            .foregroundStyle(.quaternary)
-            .padding(.bottom, 8)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .padding(.bottom, 16)
         }
         .frame(maxWidth: .infinity)
     }

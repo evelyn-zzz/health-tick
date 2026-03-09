@@ -20,6 +20,20 @@ enum BreakPosition: String, CaseIterable, Equatable {
     }
 }
 
+enum AppAppearance: String, CaseIterable, Equatable {
+    case system = "system"
+    case light = "light"
+    case dark = "dark"
+
+    var label: String {
+        switch self {
+        case .system: return L.appearanceSystem
+        case .light: return L.appearanceLight
+        case .dark: return L.appearanceDark
+        }
+    }
+}
+
 struct AppConfig: Equatable {
     var workMinutes: Int = 60
     var breakMinutes: Int = 2
@@ -29,7 +43,10 @@ struct AppConfig: Equatable {
     var breakDetectSound: Bool = false
     var breakPosition: BreakPosition = .menuWindow
     var breakConfirm: Bool = true
+    var alertSound: String = "Glass"
+    var breakDetectSoundName: String = "Tink"
     var language: AppLanguage = .system
+    var appearance: AppAppearance = .system
 }
 
 struct Badge {
@@ -89,6 +106,7 @@ final class AppState: ObservableObject {
     init() {
         config = db.loadConfig()
         L.lang = config.language
+        Self.applyAppearance(config.appearance)
         lastSavedConfig = config
         overlayManager.appState = self
         overlayManager.onForceEnd = { [weak self] in
@@ -143,14 +161,14 @@ final class AppState: ObservableObject {
 
     private func onWorkDone() {
         let reminder = config.reminders.randomElement() ?? L.defaultBreakReminder
-        playSound("Glass")
+        playSound()
 
         if config.breakConfirm {
             phase = .alerting
             remainingSeconds = 0
             alertRepeatTimer = Timer.scheduledTimer(withTimeInterval: 15, repeats: true) { [weak self] _ in
                 guard let self else { return }
-                Task { @MainActor [weak self] in self?.playSound("Ping") }
+                Task { @MainActor [weak self] in self?.playSound() }
             }
             showBreakAlert(reminder)
         } else {
@@ -259,9 +277,11 @@ final class AppState: ObservableObject {
         refreshStats()
         lastSavedConfig = newConfig
 
-        // Update global language
         if newConfig.language != old.language {
             L.lang = newConfig.language
+        }
+        if newConfig.appearance != old.appearance {
+            Self.applyAppearance(newConfig.appearance)
         }
 
         if (newConfig.workMinutes != old.workMinutes && (phase == .working || phase == .paused)) ||
@@ -339,14 +359,14 @@ final class AppState: ObservableObject {
         allBadges.first(where: { maxStreak < $0.days })
     }
 
-    func playSound(_ name: String) {
+    func playSound(_ name: String? = nil) {
         guard config.soundEnabled else { return }
-        NSSound(named: name)?.play()
+        NSSound(named: name ?? config.alertSound)?.play()
     }
 
     func playBreakDetectSound() {
         guard config.breakDetectSound else { return }
-        NSSound(named: "Tink")?.play()
+        NSSound(named: config.breakDetectSoundName)?.play()
     }
 
     func skipBreakClicked() {
@@ -364,5 +384,13 @@ final class AppState: ObservableObject {
         breakWarning = ""
         overlayManager.hide()
         startWork()
+    }
+
+    static func applyAppearance(_ appearance: AppAppearance) {
+        switch appearance {
+        case .system: NSApp.appearance = nil
+        case .light: NSApp.appearance = NSAppearance(named: .aqua)
+        case .dark: NSApp.appearance = NSAppearance(named: .darkAqua)
+        }
     }
 }

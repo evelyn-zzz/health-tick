@@ -43,7 +43,10 @@ final class Database {
             ("break_detect_sound", "0"),
             ("break_position", "menu_window"),
             ("break_confirm", "1"),
+            ("alert_sound", "Glass"),
+            ("break_detect_sound_name", "Tink"),
             ("language", "system"),
+            ("appearance", "system"),
         ]
         for (key, value) in defaults {
             exec("INSERT OR IGNORE INTO config (key, value) VALUES ('\(key)', '\(value)')")
@@ -78,7 +81,10 @@ final class Database {
                 case "break_detect_sound": config.breakDetectSound = value == "1"
                 case "break_position": config.breakPosition = BreakPosition(rawValue: value) ?? .topRight
                 case "break_confirm": config.breakConfirm = value == "1"
+                case "alert_sound": config.alertSound = value
+                case "break_detect_sound_name": config.breakDetectSoundName = value
                 case "language": config.language = AppLanguage(rawValue: value) ?? .system
+                case "appearance": config.appearance = AppAppearance(rawValue: value) ?? .system
                 default: break
                 }
             }
@@ -107,7 +113,10 @@ final class Database {
         exec("INSERT OR REPLACE INTO config (key, value) VALUES ('break_detect_sound', '\(config.breakDetectSound ? "1" : "0")')")
         exec("INSERT OR REPLACE INTO config (key, value) VALUES ('break_position', '\(config.breakPosition.rawValue)')")
         exec("INSERT OR REPLACE INTO config (key, value) VALUES ('break_confirm', '\(config.breakConfirm ? "1" : "0")')")
+        exec("INSERT OR REPLACE INTO config (key, value) VALUES ('alert_sound', '\(config.alertSound)')")
+        exec("INSERT OR REPLACE INTO config (key, value) VALUES ('break_detect_sound_name', '\(config.breakDetectSoundName)')")
         exec("INSERT OR REPLACE INTO config (key, value) VALUES ('language', '\(config.language.rawValue)')")
+        exec("INSERT OR REPLACE INTO config (key, value) VALUES ('appearance', '\(config.appearance.rawValue)')")
     }
 
     // MARK: - Records

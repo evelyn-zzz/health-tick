@@ -63,6 +63,9 @@ struct MenuView: View {
         }
         .padding(16)
         .frame(width: 240)
+        .onAppear {
+            bringOtherWindowsToFront()
+        }
     }
 
     // MARK: - Menu Window Break Content
@@ -290,6 +293,19 @@ struct MenuView: View {
     private func bringToFront() {
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func bringOtherWindowsToFront() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            let hasVisible = NSApp.windows.contains { w in
+                w.isVisible && !(w is NSPanel) && !w.title.isEmpty && w.styleMask.contains(.titled)
+            }
+            if hasVisible {
+                for w in NSApp.windows where w.isVisible && !(w is NSPanel) && !w.title.isEmpty && w.styleMask.contains(.titled) {
+                    w.orderFrontRegardless()
+                }
+            }
+        }
     }
 
     private func pixelColor(count: Int, goal: Int) -> Color {

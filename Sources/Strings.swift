@@ -99,8 +99,14 @@ struct L {
     static var breakConfirm: String { isZh ? "休息前确认" : "Confirm Before Break" }
     static var reminderSound: String { isZh ? "提醒声音" : "Reminder Sound" }
     static var activityDetectSound: String { isZh ? "操作检测提示音" : "Activity Detection Sound" }
+    static var alertSoundLabel: String { isZh ? "提醒声音" : "Alert Sound" }
+    static var detectSoundLabel: String { isZh ? "检测提示音" : "Detection Sound" }
     static var launchAtLogin: String { isZh ? "开机自启动" : "Launch at Login" }
     static var language: String { isZh ? "语言" : "Language" }
+    static var appearance: String { isZh ? "外观" : "Appearance" }
+    static var appearanceSystem: String { isZh ? "跟随系统" : "System" }
+    static var appearanceLight: String { isZh ? "浅色" : "Light" }
+    static var appearanceDark: String { isZh ? "深色" : "Dark" }
     static var durationChanged: String { isZh ? "时长已变更" : "Duration Changed" }
     static var durationChangedMsg: String { isZh ? "工作或休息时长已修改，是否按新设置重新开始计时？" : "Work or break duration has been changed. Restart the timer with new settings?" }
     static var restartTimer: String { isZh ? "重新计时" : "Restart Timer" }
