@@ -21,7 +21,6 @@ struct HealthTickApp: App {
         }
         .defaultSize(width: 440, height: 460)
         .windowResizability(.contentSize)
-        .windowToolbarStyle(.unified)
         .commands {
             CommandGroup(replacing: .newItem) {}
 
@@ -101,6 +100,7 @@ struct HealthTickApp: App {
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
     }
+
 }
 
 class AppDelegate: NSObject, NSApplicationDelegate {

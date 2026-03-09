@@ -2,19 +2,14 @@ import SwiftUI
 import ServiceManagement
 
 struct SettingsView: View {
-    @State private var selectedTab = 0
-
     var body: some View {
-        TabView(selection: $selectedTab) {
+        TabView {
             GeneralTab()
                 .tabItem { Label(L.tabGeneral, systemImage: "slider.horizontal.3") }
-                .tag(0)
             ReminderTab()
                 .tabItem { Label(L.tabReminders, systemImage: "text.bubble") }
-                .tag(1)
             AboutTab()
                 .tabItem { Label(L.tabAbout, systemImage: "info.circle") }
-                .tag(2)
         }
         .frame(width: 440)
         .fixedSize(horizontal: false, vertical: true)
