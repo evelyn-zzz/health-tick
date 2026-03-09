@@ -8,6 +8,8 @@ struct SettingsView: View {
                 .tabItem { Label(L.tabSystem, systemImage: "gearshape") }
             AppTab()
                 .tabItem { Label(L.tabApp, systemImage: "slider.horizontal.3") }
+            ReminderTab()
+                .tabItem { Label(L.tabReminders, systemImage: "text.bubble") }
             AboutTab()
                 .tabItem { Label(L.tabAbout, systemImage: "info.circle") }
         }
@@ -75,6 +77,8 @@ private func hhmmFromDate(_ date: Date) -> String {
 struct SystemTab: View {
     @EnvironmentObject var state: AppState
     @Environment(\.openWindow) private var openWindow
+    @State private var resetSettingsDone = false
+    @State private var resetDataDone = false
 
     var body: some View {
         VStack(spacing: 12) {
@@ -131,11 +135,95 @@ struct SystemTab: View {
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 6)
+                Divider().padding(.leading, 44)
+                HStack(spacing: 10) {
+                    Image(systemName: "arrow.counterclockwise")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .frame(width: 20)
+                    Text(L.resetSettings)
+                        .font(.callout)
+                    Spacer()
+                    if resetSettingsDone {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                    } else {
+                        Button {
+                            confirmReset(title: L.resetSettings, message: L.resetSettingsWarning) {
+                                state.resetToDefaults()
+                                withAnimation { resetSettingsDone = true }
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                                    withAnimation { resetSettingsDone = false }
+                                }
+                            }
+                        } label: {
+                            Text(L.resetAction)
+                                .font(.caption)
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(.orange.gradient, in: Capsule())
+                        }
+                        .buttonStyle(.borderless)
+                        .handCursor()
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 6)
+                Divider().padding(.leading, 44)
+                HStack(spacing: 10) {
+                    Image(systemName: "trash")
+                        .font(.callout)
+                        .foregroundStyle(.red.opacity(0.7))
+                        .frame(width: 20)
+                    Text(L.resetAllData)
+                        .font(.callout)
+                    Spacer()
+                    if resetDataDone {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                    } else {
+                        Button {
+                            confirmReset(title: L.resetAllData, message: L.resetDataWarning) {
+                                Database.shared.resetAllData()
+                                state.refreshStats()
+                                withAnimation { resetDataDone = true }
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                                    withAnimation { resetDataDone = false }
+                                }
+                            }
+                        } label: {
+                            Text(L.resetAction)
+                                .font(.caption)
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 4)
+                                .background(.red.gradient, in: Capsule())
+                        }
+                        .buttonStyle(.borderless)
+                        .handCursor()
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 6)
             }
             .padding(.vertical, 4)
             .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
         }
         .padding(16)
+    }
+
+    private func confirmReset(title: String, message: String, action: @escaping () -> Void) {
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = message
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: L.confirmDelete)
+        alert.addButton(withTitle: L.cancel)
+        let response = alert.runModal()
+        if response == .alertFirstButtonReturn {
+            action()
+        }
     }
 }
 
@@ -143,11 +231,6 @@ struct SystemTab: View {
 
 struct AppTab: View {
     @EnvironmentObject var state: AppState
-    @State private var newReminder = ""
-    @State private var editingIndex: Int? = nil
-    @State private var editingText = ""
-    @State private var resetSettingsDone = false
-    @State private var resetDataDone = false
 
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
@@ -307,164 +390,6 @@ struct AppTab: View {
                 .padding(.vertical, 10)
                 .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
 
-                // Reminders
-                VStack(spacing: 8) {
-                    HStack(spacing: 10) {
-                        Image(systemName: "text.bubble")
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                            .frame(width: 20)
-                        Text(L.tabReminders)
-                            .font(.callout)
-                        Spacer()
-                        Text(L.reminderHint)
-                            .font(.system(size: 10))
-                            .foregroundStyle(.tertiary)
-                    }
-                    .padding(.horizontal, 14)
-
-                    VStack(spacing: 0) {
-                        ForEach(Array(state.config.reminders.enumerated()), id: \.offset) { i, reminder in
-                            if i > 0 { Divider().padding(.leading, 14) }
-                            HStack(spacing: 10) {
-                                Circle()
-                                    .fill(.green.opacity(0.7))
-                                    .frame(width: 6, height: 6)
-
-                                if editingIndex == i {
-                                    TextField("", text: $editingText)
-                                        .textFieldStyle(.plain)
-                                        .font(.callout)
-                                        .onSubmit { saveEdit(at: i) }
-                                        .onExitCommand { editingIndex = nil }
-                                } else {
-                                    Text(reminder)
-                                        .font(.callout)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                        .contentShape(Rectangle())
-                                        .onTapGesture {
-                                            editingIndex = i
-                                            editingText = reminder
-                                        }
-                                        .handCursor()
-                                }
-
-                                Spacer()
-                                if state.config.reminders.count > 1 {
-                                    Button {
-                                        if editingIndex == i { editingIndex = nil }
-                                        _ = state.config.reminders.remove(at: i)
-                                    } label: {
-                                        Image(systemName: "xmark")
-                                            .font(.system(size: 9, weight: .bold))
-                                            .foregroundStyle(.tertiary)
-                                            .frame(width: 18, height: 18)
-                                            .background(.quaternary, in: Circle())
-                                    }
-                                    .buttonStyle(.borderless)
-                                    .handCursor()
-                                }
-                            }
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 8)
-                        }
-                    }
-                    .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
-                    .padding(.horizontal, 10)
-
-                    HStack(spacing: 8) {
-                        Image(systemName: "plus")
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
-                        TextField(L.addReminderPlaceholder, text: $newReminder)
-                            .textFieldStyle(.plain)
-                            .font(.callout)
-                            .onSubmit { addReminder() }
-
-                        if !newReminder.trimmingCharacters(in: .whitespaces).isEmpty {
-                            Button {
-                                addReminder()
-                            } label: {
-                                Image(systemName: "arrow.up.circle.fill")
-                                    .font(.title3)
-                                    .foregroundStyle(.green)
-                            }
-                            .buttonStyle(.borderless)
-                            .transition(.scale.combined(with: .opacity))
-                        }
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
-                    .padding(.horizontal, 10)
-                }
-                .padding(.vertical, 10)
-                .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
-
-                // Reset section
-                HStack(spacing: 20) {
-                    Spacer()
-
-                    if resetSettingsDone {
-                        HStack(spacing: 4) {
-                            Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-                            Text(L.settingsReset).font(.caption).foregroundStyle(.green)
-                        }
-                    } else {
-                        Button {
-                            confirmReset(
-                                title: L.resetSettings,
-                                message: L.resetSettingsWarning
-                            ) {
-                                state.resetToDefaults()
-                                withAnimation { resetSettingsDone = true }
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                                    withAnimation { resetSettingsDone = false }
-                                }
-                            }
-                        } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: "arrow.counterclockwise").font(.caption2)
-                                Text(L.resetSettings).font(.caption)
-                            }
-                            .foregroundStyle(.red.opacity(0.7))
-                        }
-                        .buttonStyle(.borderless)
-                        .handCursor()
-                    }
-
-                    if resetDataDone {
-                        HStack(spacing: 4) {
-                            Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-                            Text(L.dataCleared).font(.caption).foregroundStyle(.green)
-                        }
-                    } else {
-                        Button {
-                            confirmReset(
-                                title: L.resetAllData,
-                                message: L.resetDataWarning
-                            ) {
-                                Database.shared.resetAllData()
-                                state.refreshStats()
-                                withAnimation { resetDataDone = true }
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                                    withAnimation { resetDataDone = false }
-                                }
-                            }
-                        } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: "arrow.counterclockwise").font(.caption2)
-                                Text(L.resetAllData).font(.caption)
-                            }
-                            .foregroundStyle(.red.opacity(0.7))
-                        }
-                        .buttonStyle(.borderless)
-                        .handCursor()
-                    }
-
-                    Spacer()
-                }
-                .padding(.top, 4)
             }
             .padding(16)
         }
@@ -473,35 +398,6 @@ struct AppTab: View {
             Button(L.laterAction, role: .cancel) {}
         } message: {
             Text(L.durationChangedMsg)
-        }
-        .animation(.easeInOut(duration: 0.15), value: newReminder)
-    }
-
-    private func addReminder() {
-        let text = newReminder.trimmingCharacters(in: .whitespaces)
-        guard !text.isEmpty else { return }
-        withAnimation { state.config.reminders.append(text) }
-        newReminder = ""
-    }
-
-    private func saveEdit(at index: Int) {
-        let text = editingText.trimmingCharacters(in: .whitespaces)
-        if !text.isEmpty && index < state.config.reminders.count {
-            state.config.reminders[index] = text
-        }
-        editingIndex = nil
-    }
-
-    private func confirmReset(title: String, message: String, action: @escaping () -> Void) {
-        let alert = NSAlert()
-        alert.messageText = title
-        alert.informativeText = message
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: L.confirmDelete)
-        alert.addButton(withTitle: L.cancel)
-        let response = alert.runModal()
-        if response == .alertFirstButtonReturn {
-            action()
         }
     }
 
@@ -565,6 +461,118 @@ struct AppTab: View {
                 .padding(.bottom, 6)
             }
         }
+    }
+}
+
+// MARK: - Reminders
+
+struct ReminderTab: View {
+    @EnvironmentObject var state: AppState
+    @State private var newReminder = ""
+    @State private var editingIndex: Int? = nil
+    @State private var editingText = ""
+
+    var body: some View {
+        VStack(spacing: 16) {
+            HStack {
+                Text(L.reminderHint)
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                Spacer()
+            }
+
+            VStack(spacing: 0) {
+                ForEach(Array(state.config.reminders.enumerated()), id: \.offset) { i, reminder in
+                    if i > 0 { Divider().padding(.leading, 14) }
+                    HStack(spacing: 10) {
+                        Circle()
+                            .fill(.green.opacity(0.7))
+                            .frame(width: 6, height: 6)
+
+                        if editingIndex == i {
+                            TextField("", text: $editingText)
+                                .textFieldStyle(.plain)
+                                .font(.callout)
+                                .onSubmit { saveEdit(at: i) }
+                                .onExitCommand { editingIndex = nil }
+                        } else {
+                            Text(reminder)
+                                .font(.callout)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    editingIndex = i
+                                    editingText = reminder
+                                }
+                                .handCursor()
+                        }
+
+                        Spacer()
+                        if state.config.reminders.count > 1 {
+                            Button {
+                                if editingIndex == i { editingIndex = nil }
+                                _ = state.config.reminders.remove(at: i)
+                            } label: {
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundStyle(.tertiary)
+                                    .frame(width: 18, height: 18)
+                                    .background(.quaternary, in: Circle())
+                            }
+                            .buttonStyle(.borderless)
+                            .handCursor()
+                        }
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                }
+            }
+            .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
+
+            HStack(spacing: 8) {
+                Image(systemName: "plus")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                TextField(L.addReminderPlaceholder, text: $newReminder)
+                    .textFieldStyle(.plain)
+                    .font(.callout)
+                    .onSubmit { addReminder() }
+
+                if !newReminder.trimmingCharacters(in: .whitespaces).isEmpty {
+                    Button {
+                        addReminder()
+                    } label: {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.title3)
+                            .foregroundStyle(.green)
+                    }
+                    .buttonStyle(.borderless)
+                    .transition(.scale.combined(with: .opacity))
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
+
+            Spacer()
+        }
+        .padding(24)
+        .animation(.easeInOut(duration: 0.15), value: newReminder)
+    }
+
+    private func addReminder() {
+        let text = newReminder.trimmingCharacters(in: .whitespaces)
+        guard !text.isEmpty else { return }
+        withAnimation { state.config.reminders.append(text) }
+        newReminder = ""
+    }
+
+    private func saveEdit(at index: Int) {
+        let text = editingText.trimmingCharacters(in: .whitespaces)
+        if !text.isEmpty && index < state.config.reminders.count {
+            state.config.reminders[index] = text
+        }
+        editingIndex = nil
     }
 }
 
