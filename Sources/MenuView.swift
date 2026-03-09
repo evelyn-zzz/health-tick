@@ -8,42 +8,69 @@ struct MenuView: View {
         state.phase == .breaking && state.config.breakPosition == .menuWindow
     }
 
+    private var isWaiting: Bool {
+        state.phase == .waiting
+    }
+
     var body: some View {
         VStack(spacing: 12) {
-            // Circular timer
-            ZStack {
-                Circle()
-                    .stroke(.quaternary, lineWidth: 3)
-                Circle()
-                    .trim(from: 0, to: timerProgress)
-                    .stroke(
-                        phaseColor.gradient,
-                        style: StrokeStyle(lineWidth: 3, lineCap: .round)
-                    )
-                    .rotationEffect(.degrees(-90))
-
-                VStack(spacing: 2) {
-                    Text(state.formattedTime)
-                        .font(.system(size: 28, weight: .light, design: .monospaced))
-                    Text(state.phaseLabel)
-                        .font(.system(size: 13))
-                        .foregroundStyle(.primary.opacity(0.6))
+            // Quiet hours indicator
+            if state.isInQuietHours {
+                HStack(spacing: 6) {
+                    Image(systemName: "moon.fill")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.purple)
+                    Text(L.quietHoursActive)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.purple)
                 }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(.purple.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
             }
-            .frame(width: 120, height: 120)
-            .padding(.top, 4)
 
-            // Menu window break: show break-specific content
-            if isMenuWindowBreak {
-                menuWindowBreakContent
+            // Waiting confirmation UI
+            if isWaiting {
+                waitingContent
             } else {
-                normalContent
+                // Circular timer
+                ZStack {
+                    Circle()
+                        .stroke(.quaternary, lineWidth: 3)
+                    Circle()
+                        .trim(from: 0, to: timerProgress)
+                        .stroke(
+                            phaseColor.gradient,
+                            style: StrokeStyle(lineWidth: 3, lineCap: .round)
+                        )
+                        .rotationEffect(.degrees(-90))
+
+                    VStack(spacing: 2) {
+                        Text(state.formattedTime)
+                            .font(.system(size: 28, weight: .light, design: .monospaced))
+                        Text(state.phaseLabel)
+                            .font(.system(size: 13))
+                            .foregroundStyle(.primary.opacity(0.6))
+                    }
+                }
+                .frame(width: 120, height: 120)
+                .padding(.top, 4)
+
+                // Menu window break: show break-specific content
+                if isMenuWindowBreak {
+                    menuWindowBreakContent
+                } else {
+                    normalContent
+                }
             }
 
             Divider().padding(.horizontal, 4)
 
             // Controls
-            if isMenuWindowBreak {
+            if isWaiting {
+                // No controls in waiting state — just the confirm button above
+                EmptyView()
+            } else if isMenuWindowBreak {
                 menuWindowBreakControls
             } else {
                 normalControls
@@ -68,13 +95,53 @@ struct MenuView: View {
         }
     }
 
+    // MARK: - Waiting Content
+
+    private var waitingContent: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 44))
+                .foregroundStyle(.green)
+                .padding(.top, 8)
+
+            Text(L.breakOverReturnPrompt)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+
+            Button {
+                state.confirmReturn()
+            } label: {
+                Text(L.alertImBack)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                    .background(.green.gradient, in: RoundedRectangle(cornerRadius: 8))
+            }
+            .buttonStyle(.borderless)
+            .padding(.horizontal, 20)
+        }
+    }
+
     // MARK: - Menu Window Break Content
 
     private var menuWindowBreakContent: some View {
         VStack(spacing: 8) {
-            Text(L.breakFloatMsg)
-                .font(.callout)
-                .foregroundStyle(.orange)
+            if let activity = state.currentBreakActivity {
+                HStack(spacing: 6) {
+                    Image(systemName: activity.icon)
+                        .font(.system(size: 14))
+                        .foregroundStyle(.orange)
+                    Text(activity.text)
+                        .font(.callout)
+                        .foregroundStyle(.orange)
+                }
+            } else {
+                Text(L.breakFloatMsg)
+                    .font(.callout)
+                    .foregroundStyle(.orange)
+            }
 
             if !state.breakWarning.isEmpty {
                 HStack(spacing: 4) {
@@ -235,16 +302,19 @@ struct MenuView: View {
             Spacer()
 
             controlButton(title: L.achievements, icon: "trophy") {
+                dismissMenuPanel()
                 openWindow(id: "stats")
                 bringToFront()
             }
 
             controlButton(title: L.help, icon: "questionmark.circle") {
+                dismissMenuPanel()
                 openWindow(id: "helpguide")
                 bringToFront()
             }
 
             controlButton(title: L.settings, icon: "gear") {
+                dismissMenuPanel()
                 openWindow(id: "preferences")
                 bringToFront()
             }
@@ -288,6 +358,18 @@ struct MenuView: View {
             .foregroundStyle(.primary.opacity(0.5))
         }
         .buttonStyle(.borderless)
+    }
+
+    private func dismissMenuPanel() {
+        for window in NSApp.windows {
+            guard let panel = window as? NSPanel else { continue }
+            if panel.styleMask.contains(.nonactivatingPanel),
+               panel.styleMask.contains(.fullSizeContentView),
+               panel.frame.width < 350 {
+                panel.orderOut(nil)
+                break
+            }
+        }
     }
 
     private func bringToFront() {

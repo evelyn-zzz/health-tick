@@ -14,6 +14,12 @@ struct HealthTickApp: App {
             Image(systemName: phaseSystemImage)
         }
         .menuBarExtraStyle(.window)
+        .onChange(of: state.showOnboarding) { _, show in
+            if show {
+                openWindow(id: "onboarding")
+                bringToFront()
+            }
+        }
 
         Window(L.settingsWindow, id: "preferences") {
             SettingsView()
@@ -76,6 +82,13 @@ struct HealthTickApp: App {
                 .environmentObject(state)
         }
         .defaultSize(width: 780, height: 620)
+
+        Window(L.onboardingWindow, id: "onboarding") {
+            OnboardingView()
+                .environmentObject(state)
+        }
+        .defaultSize(width: 500, height: 450)
+        .windowResizability(.contentSize)
     }
 
     private static let isDev = Bundle.main.bundleIdentifier?.hasSuffix(".dev") == true
@@ -112,6 +125,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if let icon = NSImage(contentsOfFile: iconPath) {
             NSApp.applicationIconImage = icon
         }
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
             UpdateChecker.shared.check(silent: true)
         }

@@ -29,6 +29,20 @@ final class Database {
                 date TEXT NOT NULL
             );
             CREATE INDEX IF NOT EXISTS idx_records_date ON records(date);
+            CREATE TABLE IF NOT EXISTS sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date TEXT NOT NULL,
+                work_start TEXT NOT NULL,
+                work_end TEXT,
+                work_minutes INTEGER NOT NULL,
+                break_start TEXT,
+                break_end TEXT,
+                break_minutes INTEGER NOT NULL,
+                break_actual_seconds INTEGER,
+                skipped INTEGER NOT NULL DEFAULT 0,
+                daily_goal INTEGER NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_sessions_date ON sessions(date);
             CREATE TABLE IF NOT EXISTS config (
                 key TEXT PRIMARY KEY,
                 value TEXT NOT NULL
@@ -47,6 +61,9 @@ final class Database {
             ("break_detect_sound_name", "Tink"),
             ("language", "system"),
             ("appearance", "system"),
+            ("quiet_hours", "[]"),
+            ("work_days", "[2,3,4,5,6]"),
+            ("onboarding_completed", "0"),
         ]
         for (key, value) in defaults {
             exec("INSERT OR IGNORE INTO config (key, value) VALUES ('\(key)', '\(value)')")
@@ -85,6 +102,16 @@ final class Database {
                 case "break_detect_sound_name": config.breakDetectSoundName = value
                 case "language": config.language = AppLanguage(rawValue: value) ?? .system
                 case "appearance": config.appearance = AppAppearance(rawValue: value) ?? .system
+                case "quiet_hours":
+                    if let data = value.data(using: .utf8),
+                       let arr = try? JSONDecoder().decode([QuietHourPeriod].self, from: data) {
+                        config.quietHours = arr
+                    }
+                case "work_days":
+                    if let data = value.data(using: .utf8),
+                       let arr = try? JSONDecoder().decode(Set<Int>.self, from: data) {
+                        config.workDays = arr
+                    }
                 default: break
                 }
             }
@@ -117,6 +144,12 @@ final class Database {
         exec("INSERT OR REPLACE INTO config (key, value) VALUES ('break_detect_sound_name', '\(config.breakDetectSoundName)')")
         exec("INSERT OR REPLACE INTO config (key, value) VALUES ('language', '\(config.language.rawValue)')")
         exec("INSERT OR REPLACE INTO config (key, value) VALUES ('appearance', '\(config.appearance.rawValue)')")
+        let quietJSON = (try? JSONEncoder().encode(config.quietHours))
+            .flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
+        exec("INSERT OR REPLACE INTO config (key, value) VALUES ('quiet_hours', '\(quietJSON.replacingOccurrences(of: "'", with: "''"))')")
+        let workDaysJSON = (try? JSONEncoder().encode(config.workDays))
+            .flatMap { String(data: $0, encoding: .utf8) } ?? "[2,3,4,5,6]"
+        exec("INSERT OR REPLACE INTO config (key, value) VALUES ('work_days', '\(workDaysJSON)')")
     }
 
     // MARK: - Records
@@ -283,10 +316,61 @@ final class Database {
         return result
     }
 
+    // MARK: - Sessions
+
+    func startSession(workMinutes: Int, breakMinutes: Int, dailyGoal: Int) -> Int64 {
+        let now = ISO8601DateFormatter().string(from: Date())
+        let today = Self.todayString()
+        let sql = "INSERT INTO sessions (date, work_start, work_minutes, break_minutes, daily_goal) VALUES ('\(today)', '\(now)', \(workMinutes), \(breakMinutes), \(dailyGoal))"
+        exec(sql)
+        return sqlite3_last_insert_rowid(db)
+    }
+
+    func endWork(sessionId: Int64) {
+        let now = ISO8601DateFormatter().string(from: Date())
+        exec("UPDATE sessions SET work_end = '\(now)' WHERE id = \(sessionId)")
+    }
+
+    func startSessionBreak(sessionId: Int64) {
+        let now = ISO8601DateFormatter().string(from: Date())
+        exec("UPDATE sessions SET break_start = '\(now)' WHERE id = \(sessionId)")
+    }
+
+    func endSessionBreak(sessionId: Int64, actualSeconds: Int?, skipped: Bool) {
+        let now = ISO8601DateFormatter().string(from: Date())
+        let actualStr = actualSeconds.map { "\($0)" } ?? "NULL"
+        exec("UPDATE sessions SET break_end = '\(now)', break_actual_seconds = \(actualStr), skipped = \(skipped ? 1 : 0) WHERE id = \(sessionId)")
+    }
+
+    // MARK: - Total Count
+
+    func totalCount() -> Int {
+        queryInt("SELECT COUNT(*) FROM records")
+    }
+
+    // MARK: - Onboarding
+
+    func isOnboardingCompleted() -> Bool {
+        var stmt: OpaquePointer?
+        defer { sqlite3_finalize(stmt) }
+        guard sqlite3_prepare_v2(db, "SELECT value FROM config WHERE key = 'onboarding_completed'", -1, &stmt, nil) == SQLITE_OK,
+              sqlite3_step(stmt) == SQLITE_ROW else { return false }
+        return String(cString: sqlite3_column_text(stmt, 0)) == "1"
+    }
+
+    func setOnboardingCompleted() {
+        exec("INSERT OR REPLACE INTO config (key, value) VALUES ('onboarding_completed', '1')")
+    }
+
+    func setOnboardingIncomplete() {
+        exec("INSERT OR REPLACE INTO config (key, value) VALUES ('onboarding_completed', '0')")
+    }
+
     // MARK: - Reset
 
     func resetAllData() {
         exec("DELETE FROM records")
+        exec("DELETE FROM sessions")
     }
 
     func resetConfig() {

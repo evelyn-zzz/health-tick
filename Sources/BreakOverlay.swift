@@ -217,7 +217,13 @@ final class BreakOverlayManager {
             content.addSubview(countdown)
             if countdownLabel == nil { countdownLabel = countdown }
 
-            let msg = makeLabel(L.breakLeaveMsg, frame: NSMakeRect(0, cy - 65, w, 30), size: 18)
+            let breakMsg: String
+            if let activity = appState?.currentBreakActivity {
+                breakMsg = activity.text
+            } else {
+                breakMsg = L.breakLeaveMsg
+            }
+            let msg = makeLabel(breakMsg, frame: NSMakeRect(0, cy - 65, w, 30), size: 18)
             msg.textColor = NSColor(white: 0.7, alpha: 1)
             content.addSubview(msg)
 
@@ -251,7 +257,13 @@ final class BreakOverlayManager {
         content.addSubview(countdown)
         if countdownLabel == nil { countdownLabel = countdown }
 
-        let msg = makeLabel(L.breakFloatMsg, frame: NSMakeRect(0, 58, pw, 20), size: 12)
+        let floatMsg: String
+        if let activity = appState?.currentBreakActivity {
+            floatMsg = activity.text
+        } else {
+            floatMsg = L.breakFloatMsg
+        }
+        let msg = makeLabel(floatMsg, frame: NSMakeRect(0, 58, pw, 20), size: 12)
         msg.textColor = NSColor.secondaryLabelColor
         content.addSubview(msg)
 

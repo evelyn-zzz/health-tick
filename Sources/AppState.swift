@@ -34,6 +34,51 @@ enum AppAppearance: String, CaseIterable, Equatable {
     }
 }
 
+struct QuietHourPeriod: Codable, Equatable {
+    var start: String  // "HH:mm"
+    var end: String    // "HH:mm"
+
+    func isActive(at date: Date) -> Bool {
+        let cal = Calendar.current
+        let h = cal.component(.hour, from: date)
+        let m = cal.component(.minute, from: date)
+        let now = h * 60 + m
+
+        let startParts = start.split(separator: ":").compactMap { Int($0) }
+        let endParts = end.split(separator: ":").compactMap { Int($0) }
+        guard startParts.count == 2, endParts.count == 2 else { return false }
+
+        let s = startParts[0] * 60 + startParts[1]
+        let e = endParts[0] * 60 + endParts[1]
+
+        if s <= e {
+            return now >= s && now < e
+        } else {
+            // Crosses midnight
+            return now >= s || now < e
+        }
+    }
+}
+
+struct BreakActivity {
+    let icon: String
+    let textZh: String
+    let textEn: String
+
+    var text: String { L.isZhAccess ? textZh : textEn }
+}
+
+let breakActivities: [BreakActivity] = [
+    BreakActivity(icon: "figure.walk", textZh: "起来走走，活动一下身体", textEn: "Take a walk and stretch your body"),
+    BreakActivity(icon: "eye", textZh: "远眺窗外，放松眼睛", textEn: "Look out the window, relax your eyes"),
+    BreakActivity(icon: "drop.fill", textZh: "喝杯水，补充水分", textEn: "Drink some water, stay hydrated"),
+    BreakActivity(icon: "figure.flexibility", textZh: "做几个简单的拉伸动作", textEn: "Do some simple stretches"),
+    BreakActivity(icon: "wind", textZh: "深呼吸，放松身心", textEn: "Take deep breaths, relax your mind"),
+    BreakActivity(icon: "hand.raised.fingers.spread", textZh: "活动手腕，预防鼠标手", textEn: "Flex your wrists to prevent strain"),
+    BreakActivity(icon: "moon.fill", textZh: "闭眼休息，让大脑放松", textEn: "Close your eyes and rest your mind"),
+    BreakActivity(icon: "arrow.up.and.down", textZh: "伸展脊柱，改善坐姿", textEn: "Stretch your spine, improve posture"),
+]
+
 struct AppConfig: Equatable {
     var workMinutes: Int = 60
     var breakMinutes: Int = 2
@@ -47,14 +92,23 @@ struct AppConfig: Equatable {
     var breakDetectSoundName: String = "Tink"
     var language: AppLanguage = .system
     var appearance: AppAppearance = .system
+    var quietHours: [QuietHourPeriod] = []
+    var workDays: Set<Int> = [2, 3, 4, 5, 6]  // Calendar weekday: 2=Mon...6=Fri
 }
 
 struct Badge {
     let days: Int
     let icon: String
+    let isTotal: Bool
 
-    var name: String { L.badgeName(days) }
-    var desc: String { L.badgeDesc(days) }
+    init(days: Int, icon: String, isTotal: Bool = false) {
+        self.days = days
+        self.icon = icon
+        self.isTotal = isTotal
+    }
+
+    var name: String { isTotal ? L.totalBadgeName(days) : L.badgeName(days) }
+    var desc: String { isTotal ? L.totalBadgeDesc(days) : L.badgeDesc(days) }
 }
 
 let allBadges: [Badge] = [
@@ -69,6 +123,16 @@ let allBadges: [Badge] = [
     Badge(days: 100, icon: "🏆"),
     Badge(days: 180, icon: "💎"),
     Badge(days: 365, icon: "🐉"),
+]
+
+let allTotalBadges: [Badge] = [
+    Badge(days: 50, icon: "🔢", isTotal: true),
+    Badge(days: 100, icon: "💯", isTotal: true),
+    Badge(days: 200, icon: "🎯", isTotal: true),
+    Badge(days: 500, icon: "🚀", isTotal: true),
+    Badge(days: 1000, icon: "🌟", isTotal: true),
+    Badge(days: 2000, icon: "🔥", isTotal: true),
+    Badge(days: 5000, icon: "🏅", isTotal: true),
 ]
 
 enum AppPhase: String {
@@ -91,17 +155,33 @@ final class AppState: ObservableObject {
     @Published var breakSkipCount: Int = 0
     let breakSkipNeeded = 3
     @Published var weekData: [(String, Int)] = []
+    @Published var totalCount: Int = 0
+    @Published var isInQuietHours: Bool = false
+    @Published var showOnboarding: Bool = false
+    @Published var currentBreakActivity: BreakActivity?
 
+    private var currentSessionId: Int64?
+    private var breakStartDate: Date?
     private var targetTime: Date = Date()
     private var pausedRemaining: Int = 0
     private var pausedPhase: AppPhase?
     private var timer: Timer?
     private var alertRepeatTimer: Timer?
+    private var quietCheckTimer: Timer?
+    private var autoQuietPaused: Bool = false
     private let db = Database.shared
     var overlayManager = BreakOverlayManager()
 
     private var configWatcher: AnyCancellable?
     private var lastSavedConfig: AppConfig?
+
+    var earnedTotalBadges: [Badge] {
+        allTotalBadges.filter { totalCount >= $0.days }
+    }
+
+    var nextTotalBadge: Badge? {
+        allTotalBadges.first(where: { totalCount < $0.days })
+    }
 
     init() {
         config = db.loadConfig()
@@ -118,6 +198,15 @@ final class AppState: ObservableObject {
         startWork()
         refreshStats()
 
+        startQuietCheckTimer()
+
+        // Delay so onChange in HealthTickApp can catch the transition
+        if !db.isOnboardingCompleted() {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                self?.showOnboarding = true
+            }
+        }
+
         // Auto-save when config changes
         configWatcher = $config
             .debounce(for: .milliseconds(300), scheduler: RunLoop.main)
@@ -132,6 +221,7 @@ final class AppState: ObservableObject {
         phase = .working
         targetTime = Date().addingTimeInterval(Double(config.workMinutes * 60))
         remainingSeconds = config.workMinutes * 60
+        currentSessionId = db.startSession(workMinutes: config.workMinutes, breakMinutes: config.breakMinutes, dailyGoal: config.dailyGoal)
         startTicking()
     }
 
@@ -197,8 +287,15 @@ final class AppState: ObservableObject {
         phase = .breaking
         breakWarning = ""
         breakSkipCount = 0
+        breakStartDate = Date()
+        currentBreakActivity = breakActivities.randomElement()
         let secs = config.breakMinutes * 60
         remainingSeconds = secs
+
+        if let sid = currentSessionId {
+            db.endWork(sessionId: sid)
+            db.startSessionBreak(sessionId: sid)
+        }
 
         if config.breakPosition == .menuWindow {
             // Menu window mode: overlay manages idle-aware countdown
@@ -216,22 +313,21 @@ final class AppState: ObservableObject {
         breakWarning = ""
         overlayManager.hide()
 
+        let actualSeconds: Int?
+        if let start = breakStartDate {
+            actualSeconds = Int(Date().timeIntervalSince(start))
+        } else {
+            actualSeconds = nil
+        }
+        if let sid = currentSessionId {
+            db.endSessionBreak(sessionId: sid, actualSeconds: actualSeconds, skipped: false)
+        }
+
         db.addRecord()
         refreshStats()
-
-        showReturnDialog()
     }
 
-    private func showReturnDialog() {
-        let alert = NSAlert()
-        alert.messageText = L.healthCheckIn
-        alert.informativeText = L.breakOverReturnPrompt
-        alert.alertStyle = .informational
-        alert.addButton(withTitle: L.alertImBack)
-        NSApp.setActivationPolicy(.regular)
-        NSApp.activate(ignoringOtherApps: true)
-        alert.runModal()
-        NSApp.setActivationPolicy(.accessory)
+    func confirmReturn() {
         startWork()
     }
 
@@ -239,6 +335,8 @@ final class AppState: ObservableObject {
 
     func togglePause() {
         if phase == .paused, let prev = pausedPhase {
+            // Don't allow manual resume during quiet hours
+            if isInQuietHours { return }
             phase = prev
             pausedPhase = nil
             targetTime = Date().addingTimeInterval(Double(pausedRemaining))
@@ -257,7 +355,10 @@ final class AppState: ObservableObject {
         alertRepeatTimer?.invalidate()
         overlayManager.hide()
         pausedPhase = nil
+        autoQuietPaused = false
+        isInQuietHours = false
         startWork()
+        checkQuietHours()
     }
 
     // MARK: - Stats
@@ -267,9 +368,11 @@ final class AppState: ObservableObject {
         currentStreak = db.streakDays(goal: config.dailyGoal)
         maxStreak = db.maxStreakDays(goal: config.dailyGoal)
         weekData = db.recent7DaysCounts()
+        totalCount = db.totalCount()
     }
 
     @Published var showRestartPrompt = false
+    var suppressNextRestartPrompt = false
 
     private func autoSave(_ newConfig: AppConfig) {
         guard let old = lastSavedConfig, newConfig != old else { return }
@@ -284,9 +387,15 @@ final class AppState: ObservableObject {
             Self.applyAppearance(newConfig.appearance)
         }
 
-        if (newConfig.workMinutes != old.workMinutes && (phase == .working || phase == .paused)) ||
+        if suppressNextRestartPrompt {
+            suppressNextRestartPrompt = false
+        } else if (newConfig.workMinutes != old.workMinutes && (phase == .working || phase == .paused)) ||
            (newConfig.breakMinutes != old.breakMinutes && phase == .breaking) {
             showRestartPrompt = true
+        }
+
+        if newConfig.quietHours != old.quietHours || newConfig.workDays != old.workDays {
+            checkQuietHours()
         }
     }
 
@@ -383,7 +492,46 @@ final class AppState: ObservableObject {
         alertRepeatTimer = nil
         breakWarning = ""
         overlayManager.hide()
+
+        let actualSeconds: Int?
+        if let start = breakStartDate {
+            actualSeconds = Int(Date().timeIntervalSince(start))
+        } else {
+            actualSeconds = nil
+        }
+        if let sid = currentSessionId {
+            db.endSessionBreak(sessionId: sid, actualSeconds: actualSeconds, skipped: true)
+        }
+
         startWork()
+    }
+
+    // MARK: - Quiet Hours
+
+    private func startQuietCheckTimer() {
+        quietCheckTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            Task { @MainActor [weak self] in self?.checkQuietHours() }
+        }
+        checkQuietHours()
+    }
+
+    private func checkQuietHours() {
+        let cal = Calendar.current
+        let now = Date()
+        let weekday = cal.component(.weekday, from: now)
+        let isWorkDay = config.workDays.contains(weekday)
+        let inQuietPeriod = config.quietHours.contains { $0.isActive(at: now) }
+        let shouldPause = !isWorkDay || inQuietPeriod
+
+        if shouldPause && !isInQuietHours {
+            isInQuietHours = true
+            if phase == .breaking { forceEndBreak() }
+            if phase == .working { togglePause(); autoQuietPaused = true }
+        } else if !shouldPause && isInQuietHours {
+            isInQuietHours = false
+            if phase == .paused && autoQuietPaused { togglePause(); autoQuietPaused = false }
+        }
     }
 
     static func applyAppearance(_ appearance: AppAppearance) {

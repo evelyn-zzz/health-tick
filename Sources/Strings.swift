@@ -26,6 +26,7 @@ struct L {
     static var lang: AppLanguage = .system
 
     private static var isZh: Bool { lang.resolved == .zh }
+    static var isZhAccess: Bool { isZh }
 
     // MARK: - App General
     static var appName: String { "HealthTick" }
@@ -86,6 +87,8 @@ struct L {
 
     // MARK: - Settings - Tabs
     static var tabGeneral: String { isZh ? "通用" : "General" }
+    static var tabSystem: String { isZh ? "系统" : "System" }
+    static var tabApp: String { isZh ? "应用" : "App" }
     static var tabReminders: String { isZh ? "提醒" : "Reminders" }
     static var tabAbout: String { isZh ? "关于" : "About" }
 
@@ -327,4 +330,96 @@ struct L {
     static var settingsWindow: String { isZh ? "设置" : "Settings" }
     static var helpWindow: String { isZh ? "帮助" : "Help" }
     static var statsWindow: String { isZh ? "成就" : "Achievements" }
+    static var onboardingWindow: String { isZh ? "欢迎" : "Welcome" }
+
+    // MARK: - Quiet Hours
+    static var quietHours: String { isZh ? "休息时段" : "Quiet Hours" }
+    static var quietHoursActive: String { isZh ? "休息时段中" : "Quiet Hours" }
+    static var addQuietHour: String { isZh ? "添加休息时段" : "Add Quiet Period" }
+    static var quietHoursHelp: String { isZh ? "在休息时段内，计时器会自动暂停，不会弹出休息提醒。适合设置午休、会议等不需要提醒的时间段。" : "During quiet hours, the timer pauses automatically and no break reminders will appear. Use this for lunch breaks, meetings, or other times you don't need reminders." }
+    static var workDays: String { isZh ? "工作日" : "Work Days" }
+    static var monday: String { isZh ? "一" : "Mon" }
+    static var tuesday: String { isZh ? "二" : "Tue" }
+    static var wednesday: String { isZh ? "三" : "Wed" }
+    static var thursday: String { isZh ? "四" : "Thu" }
+    static var friday: String { isZh ? "五" : "Fri" }
+    static var saturday: String { isZh ? "六" : "Sat" }
+    static var sunday: String { isZh ? "日" : "Sun" }
+
+    static func weekdayName(_ weekday: Int) -> String {
+        switch weekday {
+        case 1: return sunday
+        case 2: return monday
+        case 3: return tuesday
+        case 4: return wednesday
+        case 5: return thursday
+        case 6: return friday
+        case 7: return saturday
+        default: return ""
+        }
+    }
+
+    // MARK: - Onboarding
+    static var onboardingWelcome: String { isZh ? "欢迎使用 HealthTick" : "Welcome to HealthTick" }
+    static var onboardingWelcomeDesc: String { isZh ? "让我们花一分钟来设置你的工作节奏" : "Let's take a minute to set up your work rhythm" }
+    static var onboardingWorkSchedule: String { isZh ? "工作时间" : "Work Schedule" }
+    static var onboardingWorkStart: String { isZh ? "上班时间" : "Start Time" }
+    static var onboardingWorkEnd: String { isZh ? "下班时间" : "End Time" }
+    static var onboardingLunchBreak: String { isZh ? "午休时间" : "Lunch Break" }
+    static var onboardingLunchStart: String { isZh ? "午休开始" : "Lunch Start" }
+    static var onboardingLunchEnd: String { isZh ? "午休结束" : "Lunch End" }
+    static var onboardingWorkDays: String { isZh ? "工作日" : "Work Days" }
+    static var onboardingWorkRhythm: String { isZh ? "工作节奏" : "Work Rhythm" }
+    static var onboardingWorkInterval: String { isZh ? "每次工作多久休息" : "Work before break" }
+    static var onboardingBreakDuration: String { isZh ? "每次休息多久" : "Break duration" }
+    static var onboardingSummary: String { isZh ? "推荐设置" : "Recommended Settings" }
+    static var onboardingEffectiveWork: String { isZh ? "有效工作时间" : "Effective Work Time" }
+    static var onboardingDailyGoal: String { isZh ? "每日目标" : "Daily Goal" }
+    static var onboardingNext: String { isZh ? "下一步" : "Next" }
+    static var onboardingBack: String { isZh ? "上一步" : "Back" }
+    static var onboardingFinish: String { isZh ? "开始使用" : "Get Started" }
+    static var onboardingSkip: String { isZh ? "跳过" : "Skip" }
+    static func onboardingGoalRecommendation(_ n: Int) -> String {
+        isZh ? "推荐每日 \(n) 次" : "Recommended: \(n) times/day"
+    }
+    static var reopenOnboarding: String { isZh ? "设置引导" : "Setup Guide" }
+    static var onboardingOpen: String { isZh ? "打开" : "Open" }
+    static var onboardingSettingsHint: String { isZh ? "以上设置随时可在「设置 → 应用」中修改" : "You can change these anytime in Settings → App" }
+
+    // MARK: - Total Badges
+    static var streakBadges: String { isZh ? "连续徽章" : "Streak Badges" }
+    static var totalBadges: String { isZh ? "累计徽章" : "Total Badges" }
+
+    static func totalBadgeName(_ count: Int) -> String {
+        if isZh {
+            switch count {
+            case 50: return "半百积累"
+            case 100: return "百次里程"
+            case 200: return "双百突破"
+            case 500: return "五百征途"
+            case 1000: return "千次大师"
+            case 2000: return "两千巅峰"
+            case 5000: return "五千传奇"
+            default: return ""
+            }
+        } else {
+            switch count {
+            case 50: return "Fifty Mark"
+            case 100: return "Century"
+            case 200: return "Double Century"
+            case 500: return "Five Hundred"
+            case 1000: return "Thousand Master"
+            case 2000: return "Two Thousand Peak"
+            case 5000: return "Five Thousand Legend"
+            default: return ""
+            }
+        }
+    }
+
+    static func totalBadgeDesc(_ count: Int) -> String {
+        isZh ? "累计打卡 \(count) 次" : "\(count) total check-ins"
+    }
+
+    // MARK: - Break Activities
+    static var breakActivity: String { isZh ? "休息建议" : "Break Suggestion" }
 }

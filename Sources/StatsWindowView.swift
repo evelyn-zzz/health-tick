@@ -232,8 +232,21 @@ struct StatsWindowView: View {
     // MARK: - Badges
 
     private var badgesPanel: some View {
-        let earnedBadges = allBadges.filter { state.maxStreak >= $0.days }
-        let nextBadge = allBadges.first(where: { state.maxStreak < $0.days })
+        let earnedStreakBadges = allBadges.filter { state.maxStreak >= $0.days }
+        let earnedTotalBadges = state.earnedTotalBadges
+        let allEarnedCount = earnedStreakBadges.count + earnedTotalBadges.count
+        let nextStreakBadge = allBadges.first(where: { state.maxStreak < $0.days })
+        let nextTotalBadge = state.nextTotalBadge
+
+        // Find the closest next badge (streak or total)
+        let streakDaysLeft = nextStreakBadge.map { $0.days - state.maxStreak }
+        let totalDaysLeft = nextTotalBadge.map { $0.days - state.totalCount }
+        let closestIsStreak: Bool
+        if let s = streakDaysLeft, let t = totalDaysLeft {
+            closestIsStreak = s <= t
+        } else {
+            closestIsStreak = streakDaysLeft != nil
+        }
 
         return VStack(alignment: .leading, spacing: 0) {
             HStack {
@@ -241,7 +254,7 @@ struct StatsWindowView: View {
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.secondary)
                 Spacer()
-                Text(L.badgeCount(earnedBadges.count))
+                Text(L.badgeCount(allEarnedCount))
                     .font(.system(size: 11, weight: .medium, design: .rounded))
                     .foregroundStyle(.tertiary)
                     .padding(.horizontal, 8)
@@ -252,7 +265,7 @@ struct StatsWindowView: View {
             .padding(.top, 16)
             .padding(.bottom, 12)
 
-            if earnedBadges.isEmpty {
+            if allEarnedCount == 0 {
                 VStack(spacing: 12) {
                     Spacer()
                     Text("?")
@@ -261,7 +274,7 @@ struct StatsWindowView: View {
                     Text(L.noBadgesYet)
                         .font(.system(size: 13))
                         .foregroundStyle(.tertiary)
-                    if let next = nextBadge {
+                    if let next = nextStreakBadge {
                         Text(L.firstBadgeHint(next.days))
                             .font(.system(size: 11))
                             .foregroundStyle(.quaternary)
@@ -272,8 +285,33 @@ struct StatsWindowView: View {
             } else {
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(spacing: 4) {
-                        ForEach(Array(earnedBadges.enumerated()), id: \.offset) { _, badge in
-                            earnedBadgeRow(badge: badge)
+                        if !earnedStreakBadges.isEmpty {
+                            HStack {
+                                Text(L.streakBadges)
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(.tertiary)
+                                Spacer()
+                            }
+                            .padding(.horizontal, 4)
+
+                            ForEach(Array(earnedStreakBadges.enumerated()), id: \.offset) { _, badge in
+                                earnedBadgeRow(badge: badge)
+                            }
+                        }
+
+                        if !earnedTotalBadges.isEmpty {
+                            HStack {
+                                Text(L.totalBadges)
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(.tertiary)
+                                Spacer()
+                            }
+                            .padding(.horizontal, 4)
+                            .padding(.top, earnedStreakBadges.isEmpty ? 0 : 8)
+
+                            ForEach(Array(earnedTotalBadges.enumerated()), id: \.offset) { _, badge in
+                                earnedBadgeRow(badge: badge)
+                            }
                         }
                     }
                     .padding(.horizontal, 12)
@@ -282,41 +320,48 @@ struct StatsWindowView: View {
 
             Spacer(minLength: 0)
 
-            if let next = nextBadge {
-                VStack(spacing: 6) {
-                    HStack(spacing: 6) {
-                        Text("🎯")
-                            .font(.system(size: 16))
-                        Text(L.nextGoal)
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(.green)
-                    }
-
-                    let progress = min(1.0, Double(state.maxStreak) / Double(next.days))
-                    GeometryReader { geo in
-                        ZStack(alignment: .leading) {
-                            RoundedRectangle(cornerRadius: 3)
-                                .fill(.quaternary)
-                            RoundedRectangle(cornerRadius: 3)
-                                .fill(.green.gradient)
-                                .frame(width: geo.size.width * progress)
-                        }
-                    }
-                    .frame(height: 6)
-
-                    Text(L.daysToUnlock(next.days - state.maxStreak))
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
-                .background(.green.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
-                .padding(.horizontal, 12)
-                .padding(.bottom, 12)
+            // Next goal: show closest badge
+            if closestIsStreak, let next = nextStreakBadge {
+                nextBadgeCard(badge: next, current: state.maxStreak, label: L.daysToUnlock(next.days - state.maxStreak))
+            } else if let next = nextTotalBadge {
+                nextBadgeCard(badge: next, current: state.totalCount, label: L.daysToUnlock(next.days - state.totalCount))
             }
         }
         .frame(width: 260)
         .background(.quaternary.opacity(0.08))
+    }
+
+    private func nextBadgeCard(badge: Badge, current: Int, label: String) -> some View {
+        VStack(spacing: 6) {
+            HStack(spacing: 6) {
+                Text("🎯")
+                    .font(.system(size: 16))
+                Text(L.nextGoal)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.green)
+            }
+
+            let progress = min(1.0, Double(current) / Double(badge.days))
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(.quaternary)
+                    RoundedRectangle(cornerRadius: 3)
+                        .fill(.green.gradient)
+                        .frame(width: geo.size.width * progress)
+                }
+            }
+            .frame(height: 6)
+
+            Text(label)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(.green.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
+        .padding(.horizontal, 12)
+        .padding(.bottom, 12)
     }
 
     private func earnedBadgeRow(badge: Badge) -> some View {

@@ -4,10 +4,10 @@ import ServiceManagement
 struct SettingsView: View {
     var body: some View {
         TabView {
-            GeneralTab()
-                .tabItem { Label(L.tabGeneral, systemImage: "slider.horizontal.3") }
-            ReminderTab()
-                .tabItem { Label(L.tabReminders, systemImage: "text.bubble") }
+            SystemTab()
+                .tabItem { Label(L.tabSystem, systemImage: "gearshape") }
+            AppTab()
+                .tabItem { Label(L.tabApp, systemImage: "slider.horizontal.3") }
             AboutTab()
                 .tabItem { Label(L.tabAbout, systemImage: "info.circle") }
         }
@@ -16,17 +16,142 @@ struct SettingsView: View {
     }
 }
 
-// MARK: - General
+// MARK: - Shared helpers
 
 private let systemSounds = ["Basso", "Blow", "Bottle", "Frog", "Funk", "Glass", "Hero", "Morse", "Ping", "Pop", "Purr", "Sosumi", "Submarine", "Tink"]
 
-struct GeneralTab: View {
+private func toggleRow(icon: String, label: String, isOn: Binding<Bool>) -> some View {
+    HStack(spacing: 10) {
+        Image(systemName: icon)
+            .font(.callout)
+            .foregroundStyle(.secondary)
+            .frame(width: 20)
+        Text(label)
+            .font(.callout)
+        Spacer()
+        Toggle("", isOn: isOn)
+            .labelsHidden()
+            .toggleStyle(.switch)
+            .tint(.green)
+    }
+    .padding(.horizontal, 14)
+    .padding(.vertical, 6)
+}
+
+private func pickerRow<P: View>(icon: String, label: String, @ViewBuilder picker: () -> P) -> some View {
+    HStack(spacing: 10) {
+        Image(systemName: icon)
+            .font(.callout)
+            .foregroundStyle(.secondary)
+            .frame(width: 20)
+        Text(label)
+            .font(.callout)
+        Spacer()
+        picker()
+            .fixedSize()
+    }
+    .padding(.horizontal, 14)
+    .padding(.vertical, 6)
+}
+
+private func dateFromHHmm(_ str: String) -> Date {
+    let parts = str.split(separator: ":").compactMap { Int($0) }
+    guard parts.count == 2 else { return Date() }
+    var comps = Calendar.current.dateComponents([.year, .month, .day], from: Date())
+    comps.hour = parts[0]
+    comps.minute = parts[1]
+    return Calendar.current.date(from: comps) ?? Date()
+}
+
+private func hhmmFromDate(_ date: Date) -> String {
+    let cal = Calendar.current
+    let h = cal.component(.hour, from: date)
+    let m = cal.component(.minute, from: date)
+    return String(format: "%02d:%02d", h, m)
+}
+
+// MARK: - System Tab
+
+struct SystemTab: View {
     @EnvironmentObject var state: AppState
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        VStack(spacing: 12) {
+            VStack(spacing: 0) {
+                pickerRow(icon: "globe", label: L.language) {
+                    Picker("", selection: $state.config.language) {
+                        ForEach(AppLanguage.allCases, id: \.self) { lang in
+                            Text(lang.displayName).tag(lang)
+                        }
+                    }
+                    .labelsHidden()
+                }
+                Divider().padding(.leading, 44)
+                pickerRow(icon: "circle.lefthalf.filled", label: L.appearance) {
+                    Picker("", selection: $state.config.appearance) {
+                        ForEach(AppAppearance.allCases, id: \.self) { a in
+                            Text(a.label).tag(a)
+                        }
+                    }
+                    .labelsHidden()
+                }
+                Divider().padding(.leading, 44)
+                toggleRow(icon: "power", label: L.launchAtLogin, isOn: Binding(
+                    get: { SMAppService.mainApp.status == .enabled },
+                    set: { enable in
+                        try? enable ? SMAppService.mainApp.register() : SMAppService.mainApp.unregister()
+                    }
+                ))
+                Divider().padding(.leading, 44)
+                HStack(spacing: 10) {
+                    Image(systemName: "wand.and.stars")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .frame(width: 20)
+                    Text(L.reopenOnboarding)
+                        .font(.callout)
+                    Spacer()
+                    Button {
+                        Database.shared.setOnboardingIncomplete()
+                        state.showOnboarding = true
+                        openWindow(id: "onboarding")
+                        NSApp.setActivationPolicy(.regular)
+                        NSApp.activate(ignoringOtherApps: true)
+                    } label: {
+                        Text(L.onboardingOpen)
+                            .font(.caption)
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(.green.gradient, in: Capsule())
+                    }
+                    .buttonStyle(.borderless)
+                    .handCursor()
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 6)
+            }
+            .padding(.vertical, 4)
+            .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
+        }
+        .padding(16)
+    }
+}
+
+// MARK: - App Tab
+
+struct AppTab: View {
+    @EnvironmentObject var state: AppState
+    @State private var newReminder = ""
+    @State private var editingIndex: Int? = nil
+    @State private var editingText = ""
     @State private var resetSettingsDone = false
     @State private var resetDataDone = false
 
     var body: some View {
-        VStack(spacing: 12) {
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(spacing: 12) {
                 // Timer sliders
                 VStack(spacing: 16) {
                     sliderRow(icon: "deskclock.fill", label: L.workDuration, value: Binding(
@@ -48,7 +173,7 @@ struct GeneralTab: View {
                 .padding(.vertical, 14)
                 .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
 
-                // Break position + toggles
+                // Break position + confirm + sounds
                 VStack(spacing: 0) {
                     pickerRow(icon: "rectangle.inset.filled", label: L.breakWindow) {
                         Picker("", selection: $state.config.breakPosition) {
@@ -78,34 +203,202 @@ struct GeneralTab: View {
                 .padding(.vertical, 4)
                 .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
 
-                // Language + Appearance + Launch at login
-                VStack(spacing: 0) {
-                    pickerRow(icon: "globe", label: L.language) {
-                        Picker("", selection: $state.config.language) {
-                            ForEach(AppLanguage.allCases, id: \.self) { lang in
-                                Text(lang.displayName).tag(lang)
-                            }
-                        }
-                        .labelsHidden()
+                // Work Days
+                VStack(spacing: 8) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "calendar")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                            .frame(width: 20)
+                        Text(L.workDays)
+                            .font(.callout)
+                        Spacer()
                     }
-                    Divider().padding(.leading, 44)
-                    pickerRow(icon: "circle.lefthalf.filled", label: L.appearance) {
-                        Picker("", selection: $state.config.appearance) {
-                            ForEach(AppAppearance.allCases, id: \.self) { a in
-                                Text(a.label).tag(a)
+                    .padding(.horizontal, 14)
+
+                    HStack(spacing: 6) {
+                        ForEach([2, 3, 4, 5, 6, 7, 1], id: \.self) { day in
+                            Button {
+                                if state.config.workDays.contains(day) {
+                                    state.config.workDays.remove(day)
+                                } else {
+                                    state.config.workDays.insert(day)
+                                }
+                            } label: {
+                                Text(L.weekdayName(day))
+                                    .font(.system(size: 12, weight: .medium))
+                                    .frame(width: 36, height: 28)
+                                    .foregroundStyle(state.config.workDays.contains(day) ? .white : .primary)
+                                    .background(
+                                        state.config.workDays.contains(day) ? Color.green : Color.gray.opacity(0.15),
+                                        in: RoundedRectangle(cornerRadius: 6)
+                                    )
                             }
+                            .buttonStyle(.borderless)
                         }
-                        .labelsHidden()
                     }
-                    Divider().padding(.leading, 44)
-                    toggleRow(icon: "power", label: L.launchAtLogin, isOn: Binding(
-                        get: { SMAppService.mainApp.status == .enabled },
-                        set: { enable in
-                            try? enable ? SMAppService.mainApp.register() : SMAppService.mainApp.unregister()
-                        }
-                    ))
+                    .padding(.horizontal, 14)
                 }
-                .padding(.vertical, 4)
+                .padding(.vertical, 10)
+                .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
+
+                // Quiet Hours
+                VStack(spacing: 8) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "moon.fill")
+                            .font(.callout)
+                            .foregroundStyle(.purple)
+                            .frame(width: 20)
+                        Text(L.quietHours)
+                            .font(.callout)
+                        Image(systemName: "questionmark.circle")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.tertiary)
+                            .help(L.quietHoursHelp)
+                        Spacer()
+                        Button {
+                            state.config.quietHours.append(QuietHourPeriod(start: "12:00", end: "13:00"))
+                        } label: {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 16))
+                                .foregroundStyle(.green)
+                        }
+                        .buttonStyle(.borderless)
+                        .handCursor()
+                    }
+                    .padding(.horizontal, 14)
+
+                    ForEach(Array(state.config.quietHours.enumerated()), id: \.offset) { i, period in
+                        HStack(spacing: 8) {
+                            DatePicker("", selection: Binding(
+                                get: { dateFromHHmm(period.start) },
+                                set: { state.config.quietHours[i].start = hhmmFromDate($0) }
+                            ), displayedComponents: .hourAndMinute)
+                            .labelsHidden()
+                            .frame(width: 80)
+
+                            Text("—")
+                                .foregroundStyle(.secondary)
+
+                            DatePicker("", selection: Binding(
+                                get: { dateFromHHmm(period.end) },
+                                set: { state.config.quietHours[i].end = hhmmFromDate($0) }
+                            ), displayedComponents: .hourAndMinute)
+                            .labelsHidden()
+                            .frame(width: 80)
+
+                            Spacer()
+
+                            Button {
+                                state.config.quietHours.remove(at: i)
+                            } label: {
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundStyle(.tertiary)
+                                    .frame(width: 18, height: 18)
+                                    .background(.quaternary, in: Circle())
+                            }
+                            .buttonStyle(.borderless)
+                            .handCursor()
+                        }
+                        .padding(.horizontal, 14)
+                    }
+                }
+                .padding(.vertical, 10)
+                .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
+
+                // Reminders
+                VStack(spacing: 8) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "text.bubble")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                            .frame(width: 20)
+                        Text(L.tabReminders)
+                            .font(.callout)
+                        Spacer()
+                        Text(L.reminderHint)
+                            .font(.system(size: 10))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .padding(.horizontal, 14)
+
+                    VStack(spacing: 0) {
+                        ForEach(Array(state.config.reminders.enumerated()), id: \.offset) { i, reminder in
+                            if i > 0 { Divider().padding(.leading, 14) }
+                            HStack(spacing: 10) {
+                                Circle()
+                                    .fill(.green.opacity(0.7))
+                                    .frame(width: 6, height: 6)
+
+                                if editingIndex == i {
+                                    TextField("", text: $editingText)
+                                        .textFieldStyle(.plain)
+                                        .font(.callout)
+                                        .onSubmit { saveEdit(at: i) }
+                                        .onExitCommand { editingIndex = nil }
+                                } else {
+                                    Text(reminder)
+                                        .font(.callout)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .contentShape(Rectangle())
+                                        .onTapGesture {
+                                            editingIndex = i
+                                            editingText = reminder
+                                        }
+                                        .handCursor()
+                                }
+
+                                Spacer()
+                                if state.config.reminders.count > 1 {
+                                    Button {
+                                        if editingIndex == i { editingIndex = nil }
+                                        _ = state.config.reminders.remove(at: i)
+                                    } label: {
+                                        Image(systemName: "xmark")
+                                            .font(.system(size: 9, weight: .bold))
+                                            .foregroundStyle(.tertiary)
+                                            .frame(width: 18, height: 18)
+                                            .background(.quaternary, in: Circle())
+                                    }
+                                    .buttonStyle(.borderless)
+                                    .handCursor()
+                                }
+                            }
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                        }
+                    }
+                    .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
+                    .padding(.horizontal, 10)
+
+                    HStack(spacing: 8) {
+                        Image(systemName: "plus")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                        TextField(L.addReminderPlaceholder, text: $newReminder)
+                            .textFieldStyle(.plain)
+                            .font(.callout)
+                            .onSubmit { addReminder() }
+
+                        if !newReminder.trimmingCharacters(in: .whitespaces).isEmpty {
+                            Button {
+                                addReminder()
+                            } label: {
+                                Image(systemName: "arrow.up.circle.fill")
+                                    .font(.title3)
+                                    .foregroundStyle(.green)
+                            }
+                            .buttonStyle(.borderless)
+                            .transition(.scale.combined(with: .opacity))
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
+                    .padding(.horizontal, 10)
+                }
+                .padding(.vertical, 10)
                 .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
 
                 // Reset section
@@ -172,14 +465,31 @@ struct GeneralTab: View {
                     Spacer()
                 }
                 .padding(.top, 4)
+            }
+            .padding(16)
         }
-        .padding(16)
         .alert(L.durationChanged, isPresented: $state.showRestartPrompt) {
             Button(L.restartTimer) { state.restartCurrentPhase() }
             Button(L.laterAction, role: .cancel) {}
         } message: {
             Text(L.durationChangedMsg)
         }
+        .animation(.easeInOut(duration: 0.15), value: newReminder)
+    }
+
+    private func addReminder() {
+        let text = newReminder.trimmingCharacters(in: .whitespaces)
+        guard !text.isEmpty else { return }
+        withAnimation { state.config.reminders.append(text) }
+        newReminder = ""
+    }
+
+    private func saveEdit(at index: Int) {
+        let text = editingText.trimmingCharacters(in: .whitespaces)
+        if !text.isEmpty && index < state.config.reminders.count {
+            state.config.reminders[index] = text
+        }
+        editingIndex = nil
     }
 
     private func confirmReset(title: String, message: String, action: @escaping () -> Void) {
@@ -208,40 +518,6 @@ struct GeneralTab: View {
             }
             Slider(value: value, in: range, step: 1).tint(color)
         }
-    }
-
-    private func toggleRow(icon: String, label: String, isOn: Binding<Bool>) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: icon)
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .frame(width: 20)
-            Text(label)
-                .font(.callout)
-            Spacer()
-            Toggle("", isOn: isOn)
-                .labelsHidden()
-                .toggleStyle(.switch)
-                .tint(.green)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 6)
-    }
-
-    private func pickerRow<P: View>(icon: String, label: String, @ViewBuilder picker: () -> P) -> some View {
-        HStack(spacing: 10) {
-            Image(systemName: icon)
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .frame(width: 20)
-            Text(label)
-                .font(.callout)
-            Spacer()
-            picker()
-                .fixedSize()
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 6)
     }
 
     private func soundRow(icon: String, label: String, isOn: Binding<Bool>, sound: Binding<String>) -> some View {
@@ -289,118 +565,6 @@ struct GeneralTab: View {
                 .padding(.bottom, 6)
             }
         }
-    }
-}
-
-// MARK: - Reminders
-
-struct ReminderTab: View {
-    @EnvironmentObject var state: AppState
-    @State private var newReminder = ""
-    @State private var editingIndex: Int? = nil
-    @State private var editingText = ""
-
-    var body: some View {
-        VStack(spacing: 16) {
-            HStack {
-                Text(L.reminderHint)
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                Spacer()
-            }
-
-            VStack(spacing: 0) {
-                ForEach(Array(state.config.reminders.enumerated()), id: \.offset) { i, reminder in
-                    if i > 0 { Divider().padding(.leading, 14) }
-                    HStack(spacing: 10) {
-                        Circle()
-                            .fill(.green.opacity(0.7))
-                            .frame(width: 6, height: 6)
-
-                        if editingIndex == i {
-                            TextField("", text: $editingText)
-                                .textFieldStyle(.plain)
-                                .font(.callout)
-                                .onSubmit { saveEdit(at: i) }
-                                .onExitCommand { editingIndex = nil }
-                        } else {
-                            Text(reminder)
-                                .font(.callout)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    editingIndex = i
-                                    editingText = reminder
-                                }
-                                .handCursor()
-                        }
-
-                        Spacer()
-                        if state.config.reminders.count > 1 {
-                            Button {
-                                if editingIndex == i { editingIndex = nil }
-                                _ = state.config.reminders.remove(at: i)
-                            } label: {
-                                Image(systemName: "xmark")
-                                    .font(.system(size: 9, weight: .bold))
-                                    .foregroundStyle(.tertiary)
-                                    .frame(width: 18, height: 18)
-                                    .background(.quaternary, in: Circle())
-                            }
-                            .buttonStyle(.borderless)
-                            .handCursor()
-                        }
-                    }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                }
-            }
-            .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
-
-            HStack(spacing: 8) {
-                Image(systemName: "plus")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                TextField(L.addReminderPlaceholder, text: $newReminder)
-                    .textFieldStyle(.plain)
-                    .font(.callout)
-                    .onSubmit { addReminder() }
-
-                if !newReminder.trimmingCharacters(in: .whitespaces).isEmpty {
-                    Button {
-                        addReminder()
-                    } label: {
-                        Image(systemName: "arrow.up.circle.fill")
-                            .font(.title3)
-                            .foregroundStyle(.green)
-                    }
-                    .buttonStyle(.borderless)
-                    .transition(.scale.combined(with: .opacity))
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
-
-            Spacer()
-        }
-        .padding(24)
-        .animation(.easeInOut(duration: 0.15), value: newReminder)
-    }
-
-    private func addReminder() {
-        let text = newReminder.trimmingCharacters(in: .whitespaces)
-        guard !text.isEmpty else { return }
-        withAnimation { state.config.reminders.append(text) }
-        newReminder = ""
-    }
-
-    private func saveEdit(at index: Int) {
-        let text = editingText.trimmingCharacters(in: .whitespaces)
-        if !text.isEmpty && index < state.config.reminders.count {
-            state.config.reminders[index] = text
-        }
-        editingIndex = nil
     }
 }
 
