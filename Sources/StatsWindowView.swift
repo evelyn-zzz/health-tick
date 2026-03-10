@@ -298,9 +298,9 @@ struct StatsWindowView: View {
         let allEarnedCount = earnedStreakDays.count + earnedTotalDays.count
         let allTotal = allBadges.count + allTotalBadges.count
 
-        let nextStreakBadge = allBadges.first(where: { state.maxStreak < $0.days })
+        let nextStreakBadge = allBadges.first(where: { state.currentStreak < $0.days })
         let nextTotalBadge = state.nextTotalBadge
-        let streakDaysLeft = nextStreakBadge.map { $0.days - state.maxStreak }
+        let streakDaysLeft = nextStreakBadge.map { $0.days - state.currentStreak }
         let totalDaysLeft = nextTotalBadge.map { $0.days - state.totalCount }
         let closestIsStreak: Bool
         if let s = streakDaysLeft, let t = totalDaysLeft {
@@ -353,7 +353,7 @@ struct StatsWindowView: View {
                         icon: "flame.fill",
                         badges: allBadges,
                         earnedDays: earnedStreakDays,
-                        currentValue: state.maxStreak
+                        currentValue: state.currentStreak
                     )
                     badgeWallSection(
                         title: L.totalBadges,
@@ -369,7 +369,7 @@ struct StatsWindowView: View {
 
             // Next goal
             if closestIsStreak, let next = nextStreakBadge {
-                nextBadgeCard(badge: next, current: state.maxStreak, label: L.daysToUnlock(next.days - state.maxStreak))
+                nextBadgeCard(badge: next, current: state.currentStreak, label: L.daysToUnlock(next.days - state.currentStreak))
             } else if let next = nextTotalBadge {
                 nextBadgeCard(badge: next, current: state.totalCount, label: L.daysToUnlock(next.days - state.totalCount))
             }
@@ -438,7 +438,7 @@ struct StatsWindowView: View {
                         .frame(width: 56, height: 56)
                     Circle()
                         .trim(from: 0, to: progress)
-                        .stroke(gold.opacity(0.3), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                        .stroke(gold.opacity(0.8), style: StrokeStyle(lineWidth: 2, lineCap: .round))
                         .frame(width: 56, height: 56)
                         .rotationEffect(.degrees(-90))
                 }

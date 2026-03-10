@@ -16,6 +16,19 @@ final class Database {
         createTables()
     }
 
+    init(path: String) {
+        dbPath = path
+        open()
+        createTables()
+    }
+
+    func addRecord(date: String, count: Int = 1) {
+        let now = ISO8601DateFormatter().string(from: Date())
+        for _ in 0..<count {
+            exec("INSERT INTO records (timestamp, date) VALUES ('\(now)', '\(date)')")
+        }
+    }
+
     private func open() {
         sqlite3_open(dbPath, &db)
         exec("PRAGMA journal_mode=WAL")
@@ -174,19 +187,25 @@ final class Database {
         var stmt: OpaquePointer?
         let sql = "SELECT date, COUNT(*) as cnt FROM records GROUP BY date ORDER BY date DESC"
         guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return 0 }
-        var streak = 0
+        defer { sqlite3_finalize(stmt) }
+
         let today = Self.todayString()
-        var isFirst = true
+        var streak = 0
+
         while sqlite3_step(stmt) == SQLITE_ROW {
             let dateStr = String(cString: sqlite3_column_text(stmt, 0))
             let cnt = Int(sqlite3_column_int(stmt, 1))
-            if isFirst {
-                if dateStr != today { break }
-                isFirst = false
+
+            // Today hasn't met goal yet — skip (still in progress)
+            if dateStr == today && cnt < goal { continue }
+
+            if cnt >= goal {
+                streak += 1
+            } else {
+                break // used app but didn't meet goal = streak broken
             }
-            if cnt >= goal { streak += 1 } else { break }
         }
-        sqlite3_finalize(stmt)
+
         return streak
     }
 
@@ -194,26 +213,19 @@ final class Database {
         var stmt: OpaquePointer?
         let sql = "SELECT date, COUNT(*) as cnt FROM records GROUP BY date ORDER BY date"
         guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return 0 }
+        defer { sqlite3_finalize(stmt) }
         var maxS = 0, curS = 0
-        var prevDate: Date?
-        let fmt = Self.dateFmt()
+
         while sqlite3_step(stmt) == SQLITE_ROW {
-            let dateStr = String(cString: sqlite3_column_text(stmt, 0))
             let cnt = Int(sqlite3_column_int(stmt, 1))
-            guard let d = fmt.date(from: dateStr) else { continue }
             if cnt >= goal {
-                if let prev = prevDate, Calendar.current.dateComponents([.day], from: prev, to: d).day == 1 {
-                    curS += 1
-                } else {
-                    curS = 1
-                }
+                curS += 1
                 maxS = max(maxS, curS)
             } else {
                 curS = 0
             }
-            prevDate = d
         }
-        sqlite3_finalize(stmt)
+
         return maxS
     }
 
