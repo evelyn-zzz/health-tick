@@ -409,6 +409,8 @@ struct L {
     static func totalBadgeName(_ count: Int) -> String {
         if isZh {
             switch count {
+            case 10: return "初始积累"
+            case 20: return "渐入佳境"
             case 50: return "半百积累"
             case 100: return "百次里程"
             case 200: return "双百突破"
@@ -420,6 +422,8 @@ struct L {
             }
         } else {
             switch count {
+            case 10: return "First Ten"
+            case 20: return "Getting Started"
             case 50: return "Fifty Mark"
             case 100: return "Century"
             case 200: return "Double Century"

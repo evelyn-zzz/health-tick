@@ -56,10 +56,10 @@ struct HelpView: View {
                     Text(L.helpBreakWindowDesc)
                         .font(.callout)
                         .foregroundStyle(.secondary)
-                    Text(L.helpBreakWindowDetect)
+                    Text(md(L.helpBreakWindowDetect))
                         .font(.callout)
                         .foregroundStyle(.secondary)
-                    Text(L.helpBreakWindowSkip)
+                    Text(md(L.helpBreakWindowSkip))
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
@@ -218,5 +218,9 @@ struct HelpView: View {
                 .font(.callout)
                 .foregroundStyle(.secondary)
         }
+    }
+
+    private func md(_ text: String) -> AttributedString {
+        (try? AttributedString(markdown: text)) ?? AttributedString(text)
     }
 }
