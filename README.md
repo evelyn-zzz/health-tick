@@ -17,8 +17,8 @@
     <img src="https://img.shields.io/github/downloads/lifedever/health-tick-release/total?style=flat-square&color=7C3AED&label=%E4%B8%8B%E8%BD%BD%E6%AC%A1%E6%95%B0" alt="Downloads">
   </a>
   <img src="https://img.shields.io/badge/platform-macOS%2014%2B-blue?style=flat-square" alt="Platform">
-  <a href="https://creativecommons.org/licenses/by-nc/4.0/">
-    <img src="https://img.shields.io/badge/license-CC%20BY--NC%204.0-orange?style=flat-square" alt="License">
+  <a href="https://www.gnu.org/licenses/gpl-3.0.html">
+    <img src="https://img.shields.io/badge/license-GPL--3.0-blue?style=flat-square" alt="License">
   </a>
 </p>
 
@@ -89,9 +89,9 @@ swift build -c release
 
 ## 📄 许可证
 
-本项目采用 [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) 许可证。
+本项目采用 [GPL-3.0](https://www.gnu.org/licenses/gpl-3.0.html) 许可证。
 
-你可以自由查看、学习、修改和非商业性分发本项目代码，但**不得用于商业用途**。
+你可以自由使用、修改和分发本项目代码，但衍生作品**必须以相同协议开源**。
 
 ## 💬 反馈
 

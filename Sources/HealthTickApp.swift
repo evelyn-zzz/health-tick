@@ -65,7 +65,7 @@ struct HealthTickApp: App {
                 Divider()
 
                 Button(L.sponsorSupport) {
-                    if let url = URL(string: "https://github.com/lifedever/health-tick-release#-赞助支持") {
+                    if let url = URL(string: "https://lifedever.github.io/sponsor/") {
                         NSWorkspace.shared.open(url)
                     }
                 }

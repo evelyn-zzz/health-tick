@@ -131,7 +131,7 @@ struct L {
     // MARK: - Settings - About
     static var checkUpdate: String { isZh ? "检查更新" : "Check for Updates" }
     static var checking: String { isZh ? "检查中..." : "Checking..." }
-    static var sponsorSupport: String { isZh ? "请喝一杯咖啡 ☕" : "Buy me a coffee ☕" }
+    static var sponsorSupport: String { isZh ? "捐赠支持" : "Donate" }
     static var resetAllData: String { isZh ? "重置数据" : "Reset Data" }
     static var resetWarning: String { isZh ? "此操作将删除所有打卡记录，不可恢复！" : "This will delete all check-in records. This cannot be undone!" }
     static var cancel: String { isZh ? "取消" : "Cancel" }
