@@ -199,6 +199,7 @@ final class AppState: ObservableObject {
     @Published var breakWarning: String = ""
     @Published var breakSkipCount: Int = 0
     let breakSkipNeeded = 3
+    var lastSkipClickTime: Date?
     @Published var weekData: [(String, Int)] = []
     @Published var totalCount: Int = 0
     @Published var isInQuietHours: Bool = false
@@ -651,6 +652,7 @@ final class AppState: ObservableObject {
     }
 
     func skipBreakClicked() {
+        lastSkipClickTime = Date()
         breakSkipCount += 1
         if breakSkipCount >= breakSkipNeeded {
             forceEndBreak()

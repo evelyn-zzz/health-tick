@@ -3,6 +3,7 @@ import AppKit
 
 let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
 let githubRepo = "lifedever/health-tick-release"
+let giteeRepo = "lifedever/health-tick-release"
 
 private var isAppleSilicon: Bool {
     var sysinfo = utsname()
@@ -13,12 +14,15 @@ private var isAppleSilicon: Bool {
     return machine.hasPrefix("arm64")
 }
 
+private let platformKey = isAppleSilicon ? "Apple-Silicon" : "Intel"
+
 @MainActor
 final class UpdateChecker: ObservableObject {
     static let shared = UpdateChecker()
 
     @Published var latestVersion: String?
     @Published var downloadURL: String?
+    @Published var fallbackDownloadURL: String?
     @Published var isChecking = false
     @Published var isDownloading = false
     @Published var downloadProgress: Double = 0
@@ -32,6 +36,81 @@ final class UpdateChecker: ObservableObject {
         isChecking = true
         checkError = nil
 
+        // Try Gitee first, fallback to GitHub
+        checkFromGitee(silent: silent)
+    }
+
+    // MARK: - Gitee (Primary)
+
+    private func checkFromGitee(silent: Bool) {
+        let urlStr = "https://gitee.com/api/v5/repos/\(giteeRepo)/releases/latest"
+        guard let url = URL(string: urlStr) else {
+            checkFromGitHub(silent: silent)
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 5
+
+        URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+            guard let self else { return }
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+
+                // If Gitee fails, fallback to GitHub
+                guard error == nil,
+                      let data,
+                      let httpResponse = response as? HTTPURLResponse,
+                      httpResponse.statusCode == 200 else {
+                    self.checkFromGitHub(silent: silent)
+                    return
+                }
+
+                guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      let tagName = json["tag_name"] as? String else {
+                    self.checkFromGitHub(silent: silent)
+                    return
+                }
+
+                let remote = tagName.trimmingCharacters(in: CharacterSet(charactersIn: "vV"))
+                self.latestVersion = remote
+
+                // Try to find download URL from assets
+                let dmgName = "HealthTick-\(tagName)-\(platformKey).dmg"
+                var giteeDownloadURL: String?
+                if let assets = json["assets"] as? [[String: Any]] {
+                    for asset in assets {
+                        if let name = asset["name"] as? String, name == dmgName,
+                           let browserURL = asset["browser_download_url"] as? String {
+                            giteeDownloadURL = browserURL
+                            break
+                        }
+                    }
+                }
+
+                // Fallback: construct Gitee download URL
+                if giteeDownloadURL == nil {
+                    giteeDownloadURL = "https://gitee.com/\(giteeRepo)/releases/download/\(tagName)/\(dmgName)"
+                }
+
+                self.downloadURL = giteeDownloadURL
+                // Keep GitHub as fallback download URL
+                self.fallbackDownloadURL = "https://github.com/\(githubRepo)/releases/download/\(tagName)/\(dmgName)"
+
+                if self.compareVersions(remote, isNewerThan: appVersion) {
+                    self.hasUpdate = true
+                    if !silent { self.showUpdateAlert(version: remote) }
+                } else {
+                    if !silent { self.showNoUpdateAlert() }
+                }
+                self.isChecking = false
+            }
+        }.resume()
+    }
+
+    // MARK: - GitHub (Fallback)
+
+    private func checkFromGitHub(silent: Bool) {
         let urlStr = "https://github.com/\(githubRepo)/releases/latest"
         guard let url = URL(string: urlStr) else {
             isChecking = false
@@ -41,7 +120,6 @@ final class UpdateChecker: ObservableObject {
         var request = URLRequest(url: url)
         request.timeoutInterval = 10
 
-        // Use a session that doesn't follow redirects to extract version from redirect URL
         let delegate = RedirectBlocker()
         let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
 
@@ -67,8 +145,9 @@ final class UpdateChecker: ObservableObject {
                 let remote = tag.trimmingCharacters(in: CharacterSet(charactersIn: "vV"))
                 self.latestVersion = remote
 
-                let platformKey = isAppleSilicon ? "Apple-Silicon" : "Intel"
-                self.downloadURL = "https://github.com/\(githubRepo)/releases/download/\(tag)/HealthTick-\(tag)-\(platformKey).dmg"
+                let dmgName = "HealthTick-\(tag)-\(platformKey).dmg"
+                self.downloadURL = "https://github.com/\(githubRepo)/releases/download/\(tag)/\(dmgName)"
+                self.fallbackDownloadURL = nil
 
                 if self.compareVersions(remote, isNewerThan: appVersion) {
                     self.hasUpdate = true
@@ -80,6 +159,8 @@ final class UpdateChecker: ObservableObject {
         }.resume()
     }
 
+    // MARK: - UI
+
     private func showNoUpdateAlert() {
         let alert = NSAlert()
         alert.messageText = L.noUpdateTitle
@@ -90,7 +171,6 @@ final class UpdateChecker: ObservableObject {
     }
 
     func showUpdateAlertPublic() {
-        // Re-check to ensure we have the latest version before showing alert
         check(silent: false)
     }
 
@@ -110,11 +190,16 @@ final class UpdateChecker: ObservableObject {
         }
     }
 
+    // MARK: - Download
+
     private func startDownload() {
         guard let urlStr = downloadURL, let url = URL(string: urlStr) else { return }
         isDownloading = true
         downloadProgress = 0
+        startDownloadFrom(url: url, isFallback: false)
+    }
 
+    private func startDownloadFrom(url: URL, isFallback: Bool) {
         let delegate = DownloadDelegate { [weak self] progress in
             Task { @MainActor [weak self] in
                 self?.downloadProgress = progress
@@ -122,12 +207,23 @@ final class UpdateChecker: ObservableObject {
         } onComplete: { [weak self] tempURL, error in
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                self.isDownloading = false
+
                 if let error {
+                    // If primary failed and fallback is available, try it
+                    if !isFallback, let fallback = self.fallbackDownloadURL, let fallbackURL = URL(string: fallback) {
+                        self.downloadProgress = 0
+                        self.startDownloadFrom(url: fallbackURL, isFallback: true)
+                        return
+                    }
+                    self.isDownloading = false
                     self.checkError = L.downloadFailed(error.localizedDescription)
                     return
                 }
-                guard let tempURL else { return }
+
+                guard let tempURL else {
+                    self.isDownloading = false
+                    return
+                }
 
                 let downloads = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first!
                 let fileName = url.lastPathComponent
@@ -136,8 +232,10 @@ final class UpdateChecker: ObservableObject {
                 try? FileManager.default.removeItem(at: dest)
                 do {
                     try FileManager.default.moveItem(at: tempURL, to: dest)
+                    self.isDownloading = false
                     self.showDownloadComplete(file: dest)
                 } catch {
+                    self.isDownloading = false
                     self.checkError = L.saveFailed(error.localizedDescription)
                 }
             }
@@ -166,6 +264,8 @@ final class UpdateChecker: ObservableObject {
         }
     }
 
+    // MARK: - Helpers
+
     private func compareVersions(_ remote: String, isNewerThan local: String) -> Bool {
         let r = remote.split(separator: ".").compactMap { Int($0) }
         let l = local.split(separator: ".").compactMap { Int($0) }
@@ -183,7 +283,6 @@ final class UpdateChecker: ObservableObject {
 
 private class RedirectBlocker: NSObject, URLSessionTaskDelegate {
     func urlSession(_ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest, completionHandler: @escaping (URLRequest?) -> Void) {
-        // Block redirect so we can read the Location header
         completionHandler(nil)
     }
 }

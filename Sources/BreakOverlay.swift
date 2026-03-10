@@ -481,7 +481,8 @@ final class BreakOverlayManager {
     private func monitorTick() {
         let idle = getUserIdleSeconds()
         let gracePeriod = monitorStartTime.map { Date().timeIntervalSince($0) < 4 } ?? false
-        if idle < 3 && remaining > 0 && !gracePeriod {
+        let skipGrace = appState?.lastSkipClickTime.map { Date().timeIntervalSince($0) < 3 } ?? false
+        if idle < 3 && remaining > 0 && !gracePeriod && !skipGrace {
             appState?.breakWarning = L.breakDetectedPause
             appState?.playBreakDetectSound()
         } else {
