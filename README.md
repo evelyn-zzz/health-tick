@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="swift/logo.svg" width="128" height="128" alt="HealthTick Logo">
+  <img src="logo.svg" width="128" height="128" alt="HealthTick Logo">
 </p>
 
 <h1 align="center">HealthTick 健康打卡</h1>
@@ -10,65 +10,92 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/lifedever/health-tick/releases/latest">
-    <img src="https://img.shields.io/github/v/release/lifedever/health-tick?style=flat-square&color=34D399" alt="Latest Release">
+  <a href="https://github.com/lifedever/health-tick-release/releases/latest">
+    <img src="https://img.shields.io/github/v/release/lifedever/health-tick-release?style=flat-square&color=34D399&label=%E6%9C%80%E6%96%B0%E7%89%88%E6%9C%AC" alt="Latest Release">
+  </a>
+  <a href="https://github.com/lifedever/health-tick-release/releases">
+    <img src="https://img.shields.io/github/downloads/lifedever/health-tick-release/total?style=flat-square&color=7C3AED&label=%E4%B8%8B%E8%BD%BD%E6%AC%A1%E6%95%B0" alt="Downloads">
   </a>
   <img src="https://img.shields.io/badge/platform-macOS%2014%2B-blue?style=flat-square" alt="Platform">
-  <img src="https://img.shields.io/badge/license-Freeware-green?style=flat-square" alt="License">
+  <a href="https://creativecommons.org/licenses/by-nc/4.0/">
+    <img src="https://img.shields.io/badge/license-CC%20BY--NC%204.0-orange?style=flat-square" alt="License">
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/lifedever/health-tick-release/releases/latest">
+    ⬇️ <strong>点击下载最新版本</strong>
+  </a>
 </p>
 
 ---
 
-## 功能特色
+## ✨ 功能特色
 
-- **智能计时** — 自定义工作时长（1-120 分钟）和休息时长（1-15 分钟）
-- **强制休息** — 休息时弹窗提醒，支持右上角、左上角、屏幕中央、全屏强制四种模式
-- **操作检测** — 休息期间检测到键鼠操作自动暂停倒计时，确保真正休息
-- **每日目标** — 设定每天休息次数目标，追踪完成进度
-- **连续打卡** — 记录连续达标天数，激励持续坚持
-- **徽章系统** — 11 枚隐藏徽章等你解锁，从"迈出第一步"到"年度传说"
-- **数据统计** — 7 天柱状图、30 天热力图、周/月达标率一目了然
-- **菜单栏常驻** — 轻量运行，不打扰工作
+| 功能 | 说明 |
+|------|------|
+| 🕐 **智能计时** | 自定义工作时长（1-120 分钟）和休息时长（1-15 分钟） |
+| 💪 **强制休息** | 休息时弹窗提醒，支持右上角 / 左上角 / 屏幕中央 / 全屏强制 |
+| 🔍 **操作检测** | 休息期间检测到键鼠操作自动暂停倒计时，确保真正休息 |
+| 🎯 **每日目标** | 设定每天休息次数目标，追踪完成进度 |
+| 🔥 **连续打卡** | 记录连续达标天数，激励持续坚持 |
+| 🏆 **徽章系统** | 18 枚徽章等你解锁，连续打卡 + 累计打卡双线激励 |
+| 📊 **数据统计** | 7 天柱状图、30 天热力图、周/月达标率一目了然 |
+| 📌 **菜单栏常驻** | 轻量运行，不打扰工作 |
+| 🔄 **自动更新** | 启动时自动检查新版本 |
 
-## 安装
+## 📸 截图
 
-前往 [Releases](https://github.com/lifedever/health-tick/releases/latest) 页面下载最新版本：
+<table><tr>
+<td><img src="screenshot.png" width="400" alt="HealthTick 菜单栏"></td>
+<td><img src="screenshot-settings.png" width="400" alt="HealthTick 设置"></td>
+</tr></table>
 
-1. 下载 `.dmg` 文件，打开后将 **HealthTick** 拖入 Applications 文件夹
-2. 或下载 `.zip` 文件，解压后将 `HealthTick.app` 移动到"应用程序"文件夹
+## 📥 安装
 
-> 首次打开可能提示"无法验证开发者"，请前往 **系统设置 > 隐私与安全性** 点击"仍要打开"。
+### 方式一：Homebrew（推荐）
 
-## 更新
+```bash
+brew tap lifedever/tap
+brew install --cask health-tick
+```
 
-- 应用启动时会自动检查新版本
-- 也可在 **设置 > 关于** 中手动检查更新
+后续更新：
 
-## 截图
+```bash
+brew upgrade --cask health-tick
+```
 
-*（即将添加）*
+### 方式二：手动下载
 
-## 系统要求
+前往 [Releases](https://github.com/lifedever/health-tick-release/releases/latest) 页面下载 `.dmg` 文件，打开后将 HealthTick 拖入 Applications 文件夹。
+
+> 💡 首次打开可能提示"无法验证开发者"，请前往 **系统设置 → 隐私与安全性** 点击"仍要打开"。
+
+## 🛠️ 从源码构建
+
+需要 macOS 14+、Swift 5.9+。
+
+```bash
+git clone https://github.com/lifedever/health-tick-release.git
+cd health-tick-release
+swift build -c release
+```
+
+## 💻 系统要求
 
 - macOS 14 (Sonoma) 或更高版本
 - Apple Silicon / Intel 均支持
 
-## 赞助支持
+## 📄 许可证
 
-如果 HealthTick 对你有帮助，欢迎赞助支持开发者继续维护和改进！
+本项目采用 [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/) 许可证。
 
-<p align="center">
-  <img src="docs/wechat-pay.jpg" width="280" alt="微信支付">&nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="docs/alipay.png" width="280" alt="支付宝">
-</p>
+你可以自由查看、学习、修改和非商业性分发本项目代码，但**不得用于商业用途**。
 
-<p align="center">
-  感谢每一位支持者 ❤️
-</p>
+## 💬 反馈
 
-## 反馈
-
-如果你遇到问题或有建议，欢迎在 [Issues](https://github.com/lifedever/health-tick/issues) 中反馈。
+遇到问题或有建议？欢迎在 [Issues](https://github.com/lifedever/health-tick-release/issues) 中反馈。
 
 ---
 
