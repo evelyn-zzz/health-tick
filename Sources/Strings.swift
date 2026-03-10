@@ -440,6 +440,14 @@ struct L {
         isZh ? "累计打卡 \(count) 次" : "\(count) total check-ins"
     }
 
+    // MARK: - Work Hours
+    static var workHoursLabel: String { isZh ? "工作时间" : "Work Hours" }
+    static var workStartTime: String { isZh ? "开始" : "Start" }
+    static var workEndTime: String { isZh ? "结束" : "End" }
+    static var continueWorking: String { isZh ? "点击继续工作" : "Tap to Continue" }
+    static var outsideWorkHours: String { isZh ? "非工作时间" : "Outside Work Hours" }
+    static var dailyGoalReached: String { isZh ? "今日目标已完成！" : "Daily goal reached!" }
+
     // MARK: - Break Activities
     static var breakActivity: String { isZh ? "休息建议" : "Break Suggestion" }
 }

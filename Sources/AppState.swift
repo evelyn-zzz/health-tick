@@ -123,6 +123,9 @@ struct AppConfig: Equatable {
     var appearance: AppAppearance = .system
     var quietHours: [QuietHourPeriod] = []
     var workDays: Set<Int> = [2, 3, 4, 5, 6]  // Calendar weekday: 2=Mon...6=Fri
+    var workHoursEnabled: Bool = false
+    var workStartTime: String = "09:00"
+    var workEndTime: String = "18:00"
     var shortcutEnabled: Bool = false
     var shortcutKeyCode: UInt16 = 36  // Return
     var shortcutModifiers: UInt = 1048576  // Command
@@ -203,6 +206,8 @@ final class AppState: ObservableObject {
     @Published var weekData: [(String, Int)] = []
     @Published var totalCount: Int = 0
     @Published var isInQuietHours: Bool = false
+    @Published var goalReachedPaused: Bool = false
+    @Published var overtimeActive: Bool = false
     @Published var showOnboarding: Bool = false
     @Published var currentBreakActivity: BreakActivity?
     @Published var currentReminder: String?
@@ -274,6 +279,7 @@ final class AppState: ObservableObject {
     // MARK: - Timer State Persistence
 
     private func restoreTimerState() {
+        overtimeActive = db.loadFlag("overtime_active")
         let saved = db.loadTimerState()
         let secs = saved.pausedRemaining ?? 0
         switch saved.phase {
@@ -302,6 +308,7 @@ final class AppState: ObservableObject {
         default:
             db.clearTimerState()
         }
+        db.saveFlag("overtime_active", value: overtimeActive)
     }
 
     // MARK: - Timer
@@ -416,7 +423,17 @@ final class AppState: ObservableObject {
         overlayManager.hideAll()
         let badge = pendingBadge
         pendingBadge = nil
-        startWork()
+
+        if todayDone >= config.dailyGoal {
+            // Daily goal reached, auto-pause instead of starting new work
+            phase = .paused
+            remainingSeconds = 0
+            goalReachedPaused = true
+            timer?.invalidate()
+        } else {
+            startWork()
+        }
+
         if let badge {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
                 self?.showBadgeCelebration(badge)
@@ -430,12 +447,18 @@ final class AppState: ObservableObject {
         if phase == .paused, let prev = pausedPhase {
             // Don't allow manual resume during quiet hours
             if isInQuietHours { return }
+            goalReachedPaused = false
             phase = prev
             pausedPhase = nil
             targetTime = Date().addingTimeInterval(Double(pausedRemaining))
             remainingSeconds = pausedRemaining
             startTicking()
             saveTimerState()
+        } else if phase == .paused && goalReachedPaused {
+            // Resume from goal-reached pause: start a new work session
+            if isInQuietHours { return }
+            goalReachedPaused = false
+            startWork()
         } else if phase == .working || phase == .breaking {
             pausedRemaining = remainingSeconds
             pausedPhase = phase
@@ -451,6 +474,7 @@ final class AppState: ObservableObject {
         overlayManager.hide()
         pausedPhase = nil
         autoQuietPaused = false
+        goalReachedPaused = false
         isInQuietHours = false
         startWork()
         checkQuietHours()
@@ -560,7 +584,10 @@ final class AppState: ObservableObject {
             showRestartPrompt = true
         }
 
-        if newConfig.quietHours != old.quietHours || newConfig.workDays != old.workDays {
+        if newConfig.quietHours != old.quietHours || newConfig.workDays != old.workDays ||
+           newConfig.workHoursEnabled != old.workHoursEnabled ||
+           newConfig.workStartTime != old.workStartTime ||
+           newConfig.workEndTime != old.workEndTime {
             checkQuietHours()
         }
 
@@ -690,13 +717,45 @@ final class AppState: ObservableObject {
         checkQuietHours()
     }
 
+    func activateOvertime() {
+        overtimeActive = true
+        db.saveFlag("overtime_active", value: true)
+        if isInQuietHours {
+            isInQuietHours = false
+            if phase == .paused && autoQuietPaused {
+                autoQuietPaused = false
+                goalReachedPaused = false
+                startWork()
+            } else if phase == .paused && goalReachedPaused {
+                goalReachedPaused = false
+                startWork()
+            } else if phase == .paused {
+                togglePause()
+            }
+        }
+    }
+
     private func checkQuietHours() {
         let cal = Calendar.current
         let now = Date()
         let weekday = cal.component(.weekday, from: now)
         let isWorkDay = config.workDays.contains(weekday)
         let inQuietPeriod = config.quietHours.contains { $0.isActive(at: now) }
-        let shouldPause = !isWorkDay || inQuietPeriod
+
+        // Check if outside configured work hours
+        var outsideWorkHours = false
+        if config.workHoursEnabled {
+            let workPeriod = QuietHourPeriod(start: config.workStartTime, end: config.workEndTime)
+            outsideWorkHours = !workPeriod.isActive(at: now)
+        }
+
+        let shouldPause = !isWorkDay || inQuietPeriod || (outsideWorkHours && !overtimeActive)
+
+        // Reset overtime when entering work hours again
+        if overtimeActive && !outsideWorkHours && isWorkDay {
+            overtimeActive = false
+            db.saveFlag("overtime_active", value: false)
+        }
 
         if shouldPause && !isInQuietHours {
             isInQuietHours = true

@@ -125,6 +125,9 @@ final class Database {
                        let arr = try? JSONDecoder().decode(Set<Int>.self, from: data) {
                         config.workDays = arr
                     }
+                case "work_hours_enabled": config.workHoursEnabled = value == "1"
+                case "work_start_time": config.workStartTime = value
+                case "work_end_time": config.workEndTime = value
                 case "shortcut_enabled": config.shortcutEnabled = value == "1"
                 case "shortcut_keycode": config.shortcutKeyCode = UInt16(value) ?? 36
                 case "shortcut_modifiers": config.shortcutModifiers = UInt(value) ?? 1048576
@@ -169,6 +172,9 @@ final class Database {
         exec("INSERT OR REPLACE INTO config (key, value) VALUES ('shortcut_enabled', '\(config.shortcutEnabled ? "1" : "0")')")
         exec("INSERT OR REPLACE INTO config (key, value) VALUES ('shortcut_keycode', '\(config.shortcutKeyCode)')")
         exec("INSERT OR REPLACE INTO config (key, value) VALUES ('shortcut_modifiers', '\(config.shortcutModifiers)')")
+        exec("INSERT OR REPLACE INTO config (key, value) VALUES ('work_hours_enabled', '\(config.workHoursEnabled ? "1" : "0")')")
+        exec("INSERT OR REPLACE INTO config (key, value) VALUES ('work_start_time', '\(config.workStartTime)')")
+        exec("INSERT OR REPLACE INTO config (key, value) VALUES ('work_end_time', '\(config.workEndTime)')")
     }
 
     // MARK: - Records
@@ -463,6 +469,14 @@ final class Database {
 
     func clearTimerState() {
         exec("DELETE FROM config WHERE key IN ('timer_phase', 'timer_target_time', 'timer_paused_remaining')")
+    }
+
+    func saveFlag(_ key: String, value: Bool) {
+        exec("INSERT OR REPLACE INTO config (key, value) VALUES ('\(key)', '\(value ? "1" : "0")')")
+    }
+
+    func loadFlag(_ key: String) -> Bool {
+        queryInt("SELECT CAST(value AS INTEGER) FROM config WHERE key = '\(key)'") == 1
     }
 
     // MARK: - Reset

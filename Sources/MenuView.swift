@@ -11,6 +11,21 @@ struct MenuView: View {
 
     var body: some View {
         VStack(spacing: 12) {
+            // Goal reached indicator
+            if state.goalReachedPaused {
+                HStack(spacing: 6) {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.green)
+                    Text(L.dailyGoalReached)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.green)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(.green.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
+            }
+
             // Quiet hours indicator
             if state.isInQuietHours {
                 HStack(spacing: 6) {
@@ -43,11 +58,27 @@ struct MenuView: View {
                         .rotationEffect(.degrees(-90))
 
                     VStack(spacing: 2) {
-                        Text(state.formattedTime)
-                            .font(.system(size: 28, weight: .light, design: .monospaced))
-                        Text(state.phaseLabel)
-                            .font(.system(size: 13))
-                            .foregroundStyle(.primary.opacity(0.6))
+                        if state.isInQuietHours {
+                            Button {
+                                state.activateOvertime()
+                            } label: {
+                                VStack(spacing: 4) {
+                                    Image(systemName: "bolt.fill")
+                                        .font(.system(size: 18))
+                                    Text(L.continueWorking)
+                                        .font(.system(size: 11, weight: .medium))
+                                }
+                                .foregroundStyle(.orange)
+                            }
+                            .buttonStyle(.borderless)
+                            .handCursor()
+                        } else {
+                            Text(state.formattedTime)
+                                .font(.system(size: 28, weight: .light, design: .monospaced))
+                            Text(state.phaseLabel)
+                                .font(.system(size: 13))
+                                .foregroundStyle(.primary.opacity(0.6))
+                        }
                     }
                 }
                 .frame(width: 120, height: 120)
@@ -257,6 +288,7 @@ struct MenuView: View {
             .foregroundStyle(.primary.opacity(0.5))
         }
         .buttonStyle(.borderless)
+        .handCursor()
     }
 
     private func dismissMenuPanel() {

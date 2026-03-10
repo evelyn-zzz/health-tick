@@ -337,6 +337,44 @@ struct AppTab: View {
                 .padding(.vertical, 10)
                 .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
 
+                // Work Hours
+                VStack(spacing: 8) {
+                    toggleRow(icon: "clock.fill", label: L.workHoursLabel, isOn: $state.config.workHoursEnabled)
+
+                    if state.config.workHoursEnabled {
+                        HStack(spacing: 8) {
+                            Spacer().frame(width: 30)
+                            Text(L.workStartTime)
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
+                            DatePicker("", selection: Binding(
+                                get: { dateFromHHmm(state.config.workStartTime) },
+                                set: { state.config.workStartTime = hhmmFromDate($0) }
+                            ), displayedComponents: .hourAndMinute)
+                            .labelsHidden()
+                            .frame(width: 80)
+
+                            Text("—")
+                                .foregroundStyle(.secondary)
+
+                            Text(L.workEndTime)
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
+                            DatePicker("", selection: Binding(
+                                get: { dateFromHHmm(state.config.workEndTime) },
+                                set: { state.config.workEndTime = hhmmFromDate($0) }
+                            ), displayedComponents: .hourAndMinute)
+                            .labelsHidden()
+                            .frame(width: 80)
+
+                            Spacer()
+                        }
+                        .padding(.horizontal, 14)
+                    }
+                }
+                .padding(.vertical, 10)
+                .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
+
                 // Quiet Hours
                 VStack(spacing: 8) {
                     HStack(spacing: 10) {

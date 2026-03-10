@@ -383,6 +383,13 @@ struct OnboardingView: View {
         let lunchStartStr = String(format: "%02d:%02d", cal.component(.hour, from: lunchStart), cal.component(.minute, from: lunchStart))
         let lunchEndStr = String(format: "%02d:%02d", cal.component(.hour, from: lunchEnd), cal.component(.minute, from: lunchEnd))
         state.config.quietHours = [QuietHourPeriod(start: lunchStartStr, end: lunchEndStr)]
+
+        // Save work hours
+        let workStartStr = String(format: "%02d:%02d", cal.component(.hour, from: workStart), cal.component(.minute, from: workStart))
+        let workEndStr = String(format: "%02d:%02d", cal.component(.hour, from: workEnd), cal.component(.minute, from: workEnd))
+        state.config.workHoursEnabled = true
+        state.config.workStartTime = workStartStr
+        state.config.workEndTime = workEndStr
     }
 
     private func finishOnboarding() {
