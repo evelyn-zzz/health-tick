@@ -225,6 +225,7 @@ final class AppState: ObservableObject {
     private var alertRepeatTimer: Timer?
     private var quietCheckTimer: Timer?
     private var autoQuietPaused: Bool = false
+    private var lastActiveDate: String = Database.todayString()
     private var lastWorkMinutesRefresh: Date = .distantPast
     private let db = Database.shared
     var overlayManager = BreakOverlayManager()
@@ -272,6 +273,14 @@ final class AppState: ObservableObject {
             self?.saveTimerState()
         }
 
+        // Detect day change after system wake from sleep
+        NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.checkDayChange()
+                self?.checkQuietHours()
+            }
+        }
+
         // Auto-save when config changes
         configWatcher = $config
             .debounce(for: .milliseconds(300), scheduler: RunLoop.main)
@@ -284,6 +293,16 @@ final class AppState: ObservableObject {
 
     private func restoreTimerState() {
         overtimeActive = db.loadFlag("overtime_active")
+        let savedDate = db.timerSaveDate()
+        let today = Database.todayString()
+
+        // Day changed since last save — start fresh
+        if !savedDate.isEmpty && savedDate != today {
+            db.clearTimerState()
+            handleDayChange()
+            return
+        }
+
         let saved = db.loadTimerState()
         let secs = saved.pausedRemaining ?? 0
         switch saved.phase {
@@ -746,12 +765,39 @@ final class AppState: ObservableObject {
         startWork()
     }
 
+    // MARK: - Day Change
+
+    private func handleDayChange() {
+        lastActiveDate = Database.todayString()
+        timer?.invalidate()
+        alertRepeatTimer?.invalidate()
+        overlayManager.hideAll()
+        pausedPhase = nil
+        autoQuietPaused = false
+        goalReachedPaused = false
+        overtimeActive = false
+        db.saveFlag("overtime_active", value: false)
+        refreshStats()
+        startWork()
+        checkQuietHours()
+    }
+
+    private func checkDayChange() {
+        let today = Database.todayString()
+        if today != lastActiveDate {
+            handleDayChange()
+        }
+    }
+
     // MARK: - Quiet Hours
 
     private func startQuietCheckTimer() {
         quietCheckTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
             guard let self else { return }
-            Task { @MainActor [weak self] in self?.checkQuietHours() }
+            Task { @MainActor [weak self] in
+                self?.checkDayChange()
+                self?.checkQuietHours()
+            }
         }
         checkQuietHours()
     }

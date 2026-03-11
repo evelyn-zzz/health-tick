@@ -505,6 +505,7 @@ final class Database {
         exec("INSERT OR REPLACE INTO config (key, value) VALUES ('timer_phase', '\(phase)')")
         exec("INSERT OR REPLACE INTO config (key, value) VALUES ('timer_target_time', '\(targetStr)')")
         exec("INSERT OR REPLACE INTO config (key, value) VALUES ('timer_paused_remaining', '\(pausedStr)')")
+        exec("INSERT OR REPLACE INTO config (key, value) VALUES ('timer_save_date', '\(Self.todayString())')")
     }
 
     func loadTimerState() -> (phase: String, targetTime: Date?, pausedRemaining: Int?) {
@@ -533,8 +534,20 @@ final class Database {
         return (phase, targetTime, pausedRemaining)
     }
 
+    func timerSaveDate() -> String {
+        var result = ""
+        var stmt: OpaquePointer?
+        if sqlite3_prepare_v2(db, "SELECT value FROM config WHERE key = 'timer_save_date'", -1, &stmt, nil) == SQLITE_OK {
+            if sqlite3_step(stmt) == SQLITE_ROW {
+                result = String(cString: sqlite3_column_text(stmt, 0))
+            }
+        }
+        sqlite3_finalize(stmt)
+        return result
+    }
+
     func clearTimerState() {
-        exec("DELETE FROM config WHERE key IN ('timer_phase', 'timer_target_time', 'timer_paused_remaining')")
+        exec("DELETE FROM config WHERE key IN ('timer_phase', 'timer_target_time', 'timer_paused_remaining', 'timer_save_date')")
     }
 
     func saveFlag(_ key: String, value: Bool) {
