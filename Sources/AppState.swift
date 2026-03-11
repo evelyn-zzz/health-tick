@@ -234,7 +234,7 @@ final class AppState: ObservableObject {
     @Published var todayWorkMinutes: Int = 0
     @Published var weekWorkData: [(String, Int)] = []
     @Published var isInQuietHours: Bool = false
-    @Published var goalReachedPaused: Bool = false
+
     @Published var overtimeActive: Bool = false
     @Published var showOnboarding: Bool = false
     @Published var currentBreakActivity: BreakActivity?
@@ -504,18 +504,7 @@ final class AppState: ObservableObject {
         let badge = pendingBadge
         pendingBadge = nil
 
-        if todayDone >= config.dailyGoal {
-            // Daily goal reached, auto-pause instead of starting new work
-            phase = .paused
-            pausedRemaining = 0
-            pausedPhase = nil
-            remainingSeconds = 0
-            goalReachedPaused = true
-            timer?.invalidate()
-            saveTimerState()
-        } else {
-            startWork()
-        }
+        startWork()
 
         if let badge {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
@@ -530,18 +519,12 @@ final class AppState: ObservableObject {
         if phase == .paused, let prev = pausedPhase {
             // Don't allow manual resume during quiet hours
             if isInQuietHours { return }
-            goalReachedPaused = false
             phase = prev
             pausedPhase = nil
             targetTime = Date().addingTimeInterval(Double(pausedRemaining))
             remainingSeconds = pausedRemaining
             startTicking()
             saveTimerState()
-        } else if phase == .paused && goalReachedPaused {
-            // Resume from goal-reached pause: start a new work session
-            if isInQuietHours { return }
-            goalReachedPaused = false
-            startWork()
         } else if phase == .working || phase == .breaking {
             pausedRemaining = remainingSeconds
             pausedPhase = phase
@@ -557,7 +540,7 @@ final class AppState: ObservableObject {
         overlayManager.hide()
         pausedPhase = nil
         autoQuietPaused = false
-        goalReachedPaused = false
+
         isInQuietHours = false
         startWork()
         checkQuietHours()
@@ -821,7 +804,7 @@ final class AppState: ObservableObject {
         overlayManager.hideAll()
         pausedPhase = nil
         autoQuietPaused = false
-        goalReachedPaused = false
+
         overtimeActive = false
         db.saveFlag("overtime_active", value: false)
         refreshStats()
@@ -856,7 +839,7 @@ final class AppState: ObservableObject {
             isInQuietHours = false
             stopQuietCountdown()
             autoQuietPaused = false
-            goalReachedPaused = false
+    
             startWork()
         }
     }
@@ -932,7 +915,7 @@ final class AppState: ObservableObject {
             isInQuietHours = false
             stopQuietCountdown()
             autoQuietPaused = false
-            goalReachedPaused = false
+    
             startWork()
         }
 

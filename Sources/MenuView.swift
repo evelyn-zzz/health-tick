@@ -12,7 +12,7 @@ struct MenuView: View {
     var body: some View {
         VStack(spacing: 12) {
             // Goal reached indicator
-            if state.goalReachedPaused {
+            if state.todayDone >= state.config.dailyGoal {
                 HStack(spacing: 6) {
                     Image(systemName: "checkmark.seal.fill")
                         .font(.system(size: 12))
