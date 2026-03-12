@@ -303,10 +303,13 @@ final class AppState: ObservableObject {
         }
 
         // Detect day change after system wake from sleep
-        NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
+        NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: nil) { [weak self] _ in
             Task { @MainActor [weak self] in
-                self?.checkDayChange()
-                self?.checkQuietHours()
+                guard let self else { return }
+                self.checkDayChange()
+                self.checkQuietHours()
+                // Re-sync stats after wake (e.g. work minutes, streak)
+                self.refreshStats()
             }
         }
 
@@ -797,16 +800,49 @@ final class AppState: ObservableObject {
 
     // MARK: - Day Change
 
+    /// Day changed — treat as a completely fresh start.
+    /// All previous state (timers, sessions, overlays, quiet hours) is wiped.
     private func handleDayChange() {
         lastActiveDate = Database.todayString()
+
+        // 1. Stop all timers
         timer?.invalidate()
         alertRepeatTimer?.invalidate()
+        alertRepeatTimer = nil
+
+        // 2. Dismiss all overlays immediately
         overlayManager.hideAll()
+
+        // 3. Force phase to neutral before any UI can render stale state
+        phase = .paused
+
+        // 4. Clear all break / alerting / waiting state
         pausedPhase = nil
         autoQuietPaused = false
+        breakWarning = ""
+        breakSkipCount = 0
+        currentBreakActivity = nil
+        currentReminder = nil
+        pendingBadge = nil
+        breakStartDate = nil
 
+        // 5. Close orphan session from previous day (e.g. alerting when lid closed)
+        if let sid = currentSessionId {
+            db.endWork(sessionId: sid)
+            currentSessionId = nil
+        }
+        db.closeOrphanSessions(beforeDate: Database.todayString())
+
+        // 6. Reset overtime & quiet hours
         overtimeActive = false
         db.saveFlag("overtime_active", value: false)
+        isInQuietHours = false
+        stopQuietCountdown()
+
+        // 7. Clear persisted timer state
+        db.clearTimerState()
+
+        // 8. Refresh stats for the new day, then start fresh
         refreshStats()
         startWork()
         checkQuietHours()

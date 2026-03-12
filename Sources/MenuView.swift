@@ -5,8 +5,9 @@ struct MenuView: View {
     @Environment(\.openWindow) private var openWindow
 
     /// Whether to show the shared BreakCardView (alerting, breaking, or waiting)
+    /// Quiet hours override: never show break UI during quiet hours
     private var isBreakPhase: Bool {
-        state.phase == .alerting || state.phase == .breaking || state.phase == .waiting
+        !state.isInQuietHours && (state.phase == .alerting || state.phase == .breaking || state.phase == .waiting)
     }
 
     var body: some View {

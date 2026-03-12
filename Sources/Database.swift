@@ -367,6 +367,13 @@ final class Database {
         exec("UPDATE sessions SET work_end = '\(now)' WHERE id = \(sessionId)")
     }
 
+    /// Close all sessions from previous days that were never properly ended
+    /// (e.g. user closed laptop lid during alerting phase).
+    /// Sets work_end = work_start so they contribute 0 work minutes.
+    func closeOrphanSessions(beforeDate date: String) {
+        exec("UPDATE sessions SET work_end = work_start WHERE date < '\(date)' AND work_end IS NULL")
+    }
+
     func startSessionBreak(sessionId: Int64) {
         let now = ISO8601DateFormatter().string(from: Date())
         exec("UPDATE sessions SET break_start = '\(now)' WHERE id = \(sessionId)")
