@@ -191,24 +191,11 @@ private class KeyablePanel: NSPanel {
 // MARK: - Idle Detection
 
 func getUserIdleSeconds() -> Double {
-    let process = Process()
-    process.executableURL = URL(fileURLWithPath: "/usr/sbin/ioreg")
-    process.arguments = ["-c", "IOHIDSystem", "-d", "4"]
-    let pipe = Pipe()
-    process.standardOutput = pipe
-    try? process.run()
-    let data = pipe.fileHandleForReading.readDataToEndOfFile()
-    process.waitUntilExit()
-    guard let output = String(data: data, encoding: .utf8) else { return 0 }
-    for line in output.split(separator: "\n") {
-        if line.contains("HIDIdleTime") {
-            let parts = line.split(separator: "=")
-            if let last = parts.last, let val = Double(last.trimmingCharacters(in: .whitespaces)) {
-                return val / 1_000_000_000
-            }
-        }
-    }
-    return 0
+    // Use CoreGraphics API instead of spawning a subprocess every second.
+    // CGEventSource.secondsSinceLastEventType is lightweight and synchronous.
+    let idle = CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: .mouseMoved)
+    let idleKey = CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: .keyDown)
+    return min(idle, idleKey)
 }
 
 // MARK: - Overlay Manager
@@ -320,7 +307,7 @@ final class BreakOverlayManager {
     private func pinMenuBarExtra() {
         findMenuBarExtraPanel()
 
-        menuPinTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: true) { [weak self] _ in
+        menuPinTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
             guard let self else { return }
             Task { @MainActor [weak self] in
                 self?.ensureMenuPinned()
@@ -352,7 +339,7 @@ final class BreakOverlayManager {
     private func ensureMenuPinned() {
         guard isMenuWindowMode else { return }
         if let panel = menuBarExtraPanel, panel.isVisible {
-            panel.level = .floating
+            if panel.level != .floating { panel.level = .floating }
             return
         }
         findMenuBarExtraPanel()

@@ -965,7 +965,9 @@ final class AppState: ObservableObject {
     private func startQuietCountdown() {
         quietCountdownTimer?.invalidate()
         updateQuietRemaining()
-        quietCountdownTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+        // Update every 30s — quiet hours last hours, second-level precision is unnecessary
+        // and avoids triggering a full MenuView redraw every second via @Published.
+        quietCountdownTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
             guard let self else { return }
             Task { @MainActor [weak self] in
                 guard let self, self.isInQuietHours else { return }

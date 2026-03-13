@@ -498,4 +498,16 @@ struct L {
         }
         return isZh ? "\(h)时" : "\(h)h"
     }
+
+    // MARK: - Share
+    static var share: String { isZh ? "分享" : "Share" }
+    static var shareCopied: String { isZh ? "已复制到剪贴板" : "Copied to clipboard" }
+    static var shareGoalReached: String { isZh ? "🎉 今日目标已达成！" : "🎉 Daily Goal Achieved!" }
+    static var shareKeepGoing: String { isZh ? "💪 继续加油中..." : "💪 Keep going..." }
+    static var shareStreak: String { isZh ? "连续" : "Streak" }
+    static var shareMaxStreak: String { isZh ? "最长" : "Best" }
+    static var shareTotalBreaks: String { isZh ? "累计" : "Total" }
+    static var shareWorkTime: String { isZh ? "工时" : "Work" }
+    static var shareCopyAction: String { isZh ? "复制图片" : "Copy Image" }
+    static var shareMore: String { isZh ? "更多分享" : "More..." }
 }

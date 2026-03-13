@@ -3,7 +3,6 @@ import SwiftUI
 struct MenuView: View {
     @EnvironmentObject var state: AppState
     @Environment(\.openWindow) private var openWindow
-
     /// Whether to show the shared BreakCardView (alerting, breaking, or waiting)
     /// Quiet hours override: never show break UI during quiet hours
     private var isBreakPhase: Bool {
@@ -171,7 +170,7 @@ struct MenuView: View {
                 }
             }
 
-            // Today work time
+            // Today work time + share button
             HStack(spacing: 4) {
                 Text("✍️")
                     .font(.system(size: 12))
@@ -181,6 +180,21 @@ struct MenuView: View {
                 Text(L.formatWorkTime(state.todayWorkMinutes))
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.blue)
+
+                Spacer().frame(width: 6)
+
+                Button {
+                    let data = ShareCardData(from: state)
+                    ShareManager.showPreview(data: data)
+                    dismissMenuPanel()
+                } label: {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.primary.opacity(0.35))
+                }
+                .buttonStyle(.borderless)
+                .handCursor()
+                .help(L.share)
             }
 
             // 7-day pixels
