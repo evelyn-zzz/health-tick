@@ -299,12 +299,14 @@ final class AppState: ObservableObject {
 
         // Save timer state and close current session on app quit
         NotificationCenter.default.addObserver(forName: NSApplication.willTerminateNotification, object: nil, queue: .main) { [weak self] _ in
-            guard let self else { return }
-            if let sid = self.currentSessionId {
-                self.db.endWork(sessionId: sid)
-                self.currentSessionId = nil
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                if let sid = self.currentSessionId {
+                    self.db.endWork(sessionId: sid)
+                    self.currentSessionId = nil
+                }
+                self.saveTimerState()
             }
-            self.saveTimerState()
         }
 
         // Detect day change after system wake from sleep

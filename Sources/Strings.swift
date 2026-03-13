@@ -508,6 +508,9 @@ struct L {
     static var shareMaxStreak: String { isZh ? "最长" : "Best" }
     static var shareTotalBreaks: String { isZh ? "累计" : "Total" }
     static var shareWorkTime: String { isZh ? "工时" : "Work" }
-    static var shareCopyAction: String { isZh ? "复制图片" : "Copy Image" }
-    static var shareMore: String { isZh ? "更多分享" : "More..." }
+    static var shareCopyAction: String { isZh ? "复制" : "Copy" }
+    static var shareSaveAction: String { isZh ? "保存" : "Save" }
+    static var shareMore: String { isZh ? "分享" : "Share" }
+    static var shareSaved: String { isZh ? "已保存" : "Saved" }
+    static var sharePreviewSubtitle: String { isZh ? "今日成就卡片" : "Daily Achievement Card" }
 }

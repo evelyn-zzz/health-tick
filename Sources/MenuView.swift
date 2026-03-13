@@ -117,6 +117,7 @@ struct MenuView: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderless)
+            .handCursor()
         }
         .padding(16)
         .frame(width: 240)
