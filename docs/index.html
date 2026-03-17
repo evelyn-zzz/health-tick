@@ -30,9 +30,49 @@
   --ink-muted: #6b8a6b;
   --radius: 20px;
   --radius-sm: 12px;
+  --card-bg: rgba(255,255,255,0.7);
+  --card-solid: #fff;
+  --nav-scrolled-bg: rgba(254, 253, 248, 0.85);
+  --nav-scrolled-border: var(--green-200);
+  --screenshot-shadow: rgba(0,0,0,0.1);
+  --btn-nav-bg: rgba(255,255,255,0.8);
+  --install-note-bg: #fffbeb;
+  --install-note-color: #92400e;
+  --workflow-bg: #1a2e1a;
+  --workflow-text-muted: rgba(255,255,255,0.6);
+  --donate-bg: linear-gradient(135deg, var(--green-50), var(--green-100));
+  --donate-border: var(--green-200);
 }
 
-html { scroll-behavior: smooth; }
+@media (prefers-color-scheme: dark) {
+  :root {
+    --green-50: #071f14;
+    --green-100: #0d3322;
+    --green-200: #155e3d;
+    --sand-50: #0f1210;
+    --sand-100: #161a17;
+    --sand-200: #1e241f;
+    --sand-300: #2e362f;
+    --sand-600: #8a917b;
+    --ink: #e4e8e4;
+    --ink-light: #b8c8b8;
+    --ink-muted: #7f9a7f;
+    --card-bg: rgba(30, 36, 31, 0.7);
+    --card-solid: #1a201b;
+    --nav-scrolled-bg: rgba(15, 18, 16, 0.85);
+    --nav-scrolled-border: #1e3a28;
+    --screenshot-shadow: rgba(0,0,0,0.4);
+    --btn-nav-bg: rgba(30, 36, 31, 0.8);
+    --install-note-bg: #1c1a0e;
+    --install-note-color: #d4a847;
+    --workflow-bg: #0a1a0e;
+    --workflow-text-muted: rgba(255,255,255,0.5);
+    --donate-bg: linear-gradient(135deg, #0d1f14, #0d3322);
+    --donate-border: #155e3d;
+  }
+}
+
+html { scroll-behavior: smooth; color-scheme: light dark; }
 
 body {
   font-family: 'Noto Sans SC', -apple-system, sans-serif;
@@ -87,10 +127,10 @@ nav {
   transition: all 0.4s ease;
 }
 nav.scrolled {
-  background: rgba(254, 253, 248, 0.85);
+  background: var(--nav-scrolled-bg);
   backdrop-filter: blur(20px) saturate(1.5);
   -webkit-backdrop-filter: blur(20px) saturate(1.5);
-  border-bottom: 1px solid var(--green-200);
+  border-bottom: 1px solid var(--nav-scrolled-border);
 }
 nav .container {
   display: flex;
@@ -296,7 +336,7 @@ nav .container {
   margin-top: 60px;
 }
 .feature-card {
-  background: rgba(255,255,255,0.7);
+  background: var(--card-bg);
   backdrop-filter: blur(10px);
   border: 1px solid var(--green-100);
   border-radius: var(--radius);
@@ -348,6 +388,11 @@ nav .container {
 .screenshots-section {
   background: linear-gradient(180deg, var(--sand-50) 0%, var(--green-50) 50%, var(--sand-50) 100%);
 }
+@media (prefers-color-scheme: dark) {
+  .screenshots-section {
+    background: linear-gradient(180deg, var(--sand-50) 0%, #091a10 50%, var(--sand-50) 100%);
+  }
+}
 .screenshots-track {
   margin-top: 60px;
   position: relative;
@@ -371,7 +416,7 @@ nav .container {
   height: 480px;
   width: auto;
   border-radius: var(--radius);
-  box-shadow: 0 20px 60px rgba(0,0,0,0.1), 0 1px 3px rgba(0,0,0,0.05);
+  box-shadow: 0 20px 60px var(--screenshot-shadow), 0 1px 3px rgba(0,0,0,0.05);
   transition: transform 0.4s ease;
 }
 .screenshot-item:hover img {
@@ -395,7 +440,7 @@ nav .container {
   height: 40px;
   border-radius: 50%;
   border: 1.5px solid var(--sand-300);
-  background: rgba(255,255,255,0.8);
+  background: var(--btn-nav-bg);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -406,12 +451,12 @@ nav .container {
 .screenshots-nav button:hover {
   border-color: var(--green-400);
   color: var(--green-600);
-  background: #fff;
+  background: var(--card-solid);
 }
 
 /* ===== How it works ===== */
 .workflow {
-  background: var(--ink);
+  background: var(--workflow-bg);
   color: #fff;
   border-radius: 32px;
   padding: 80px 60px;
@@ -457,7 +502,7 @@ nav .container {
 }
 .workflow-step p {
   font-size: 13px;
-  color: rgba(255,255,255,0.6);
+  color: var(--workflow-text-muted);
   line-height: 1.6;
 }
 
@@ -469,7 +514,7 @@ nav .container {
   margin-top: 60px;
 }
 .install-card {
-  background: #fff;
+  background: var(--card-solid);
   border: 1px solid var(--green-100);
   border-radius: var(--radius);
   padding: 36px;
@@ -502,7 +547,7 @@ nav .container {
   margin-bottom: 24px;
 }
 .code-block {
-  background: var(--ink);
+  background: #1a2e1a;
   color: var(--green-400);
   border-radius: var(--radius-sm);
   padding: 16px 20px;
@@ -546,11 +591,30 @@ nav .container {
 .install-note {
   margin-top: 20px;
   padding: 14px 18px;
-  background: #fffbeb;
+  background: var(--install-note-bg);
   border-radius: var(--radius-sm);
   font-size: 13px;
-  color: #92400e;
+  color: var(--install-note-color);
   line-height: 1.6;
+}
+
+/* ===== Donate ===== */
+.donate-card {
+  background: var(--donate-bg);
+  border: 1.5px solid var(--donate-border);
+  border-radius: 24px;
+  padding: 48px 40px;
+  position: relative;
+  overflow: hidden;
+}
+.donate-glow {
+  position: absolute;
+  top: -60px;
+  right: -60px;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, var(--green-200) 0%, transparent 70%);
+  opacity: 0.5;
 }
 
 /* ===== Footer ===== */
@@ -587,6 +651,24 @@ footer {
   text-decoration: none;
 }
 .footer-info a:hover { text-decoration: underline; }
+
+/* ===== Dark mode SVG/icon adjustments ===== */
+@media (prefers-color-scheme: dark) {
+  .hero-logo {
+    filter: drop-shadow(0 8px 24px rgba(16, 185, 129, 0.15));
+  }
+  .ambient::before { opacity: 0.15; }
+  .ambient::after { opacity: 0.1; }
+  .feature-card:hover {
+    box-shadow: 0 12px 40px rgba(16, 185, 129, 0.05);
+  }
+  .btn-primary {
+    box-shadow: 0 4px 20px rgba(16, 185, 129, 0.2);
+  }
+  .btn-primary:hover {
+    box-shadow: 0 8px 30px rgba(16, 185, 129, 0.25);
+  }
+}
 
 /* ===== Animations ===== */
 @keyframes fadeUp {
@@ -843,8 +925,8 @@ footer {
 <section class="section" id="donate" style="padding: 60px 0 80px;">
   <div class="container">
     <div class="reveal" style="text-align: center;">
-      <div style="background: linear-gradient(135deg, var(--green-50), var(--green-100)); border: 1.5px solid var(--green-200); border-radius: 24px; padding: 48px 40px; position: relative; overflow: hidden;">
-        <div style="position: absolute; top: -60px; right: -60px; width: 200px; height: 200px; background: radial-gradient(circle, var(--green-200) 0%, transparent 70%); opacity: 0.5;"></div>
+      <div class="donate-card">
+        <div class="donate-glow"></div>
         <div style="position: relative; z-index: 1;">
           <div style="font-size: 40px; margin-bottom: 16px;">💖</div>
           <div class="section-title" style="margin-bottom: 12px;">喜欢 HealthTick？</div>
