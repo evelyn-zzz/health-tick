@@ -135,7 +135,11 @@ func keyCodeToString(_ keyCode: UInt16) -> String {
 
 struct AppConfig: Equatable {
     var workMinutes: Int = 60
-    var breakMinutes: Int = 2
+    var breakSeconds: Int = 120            // 默认 2 分钟 = 120 秒
+    var eyeCareMode: Bool = false
+    var savedWorkMinutes: Int = 60
+    var savedBreakSeconds: Int = 120
+    var savedBreakConfirm: Bool = true
     var dailyGoal: Int = 8
     var reminders: [String] = [L.defaultReminder1, L.defaultReminder2]
     var soundEnabled: Bool = true
@@ -358,7 +362,7 @@ final class AppState {
             currentSessionWorkConfig = config.workMinutes
             remainingSeconds = secs
             targetTime = Date().addingTimeInterval(Double(secs))
-            currentSessionId = db.startSession(workMinutes: config.workMinutes, breakMinutes: config.breakMinutes, dailyGoal: config.dailyGoal)
+            currentSessionId = db.startSession(workMinutes: config.workMinutes, breakSeconds: config.breakSeconds, dailyGoal: config.dailyGoal)
             startTicking()
         case "paused" where secs > 0:
             phase = .paused
@@ -375,7 +379,7 @@ final class AppState {
                 saveTimerState()
             } else {
                 // No confirm needed — go straight to break
-                currentSessionId = db.startSession(workMinutes: config.workMinutes, breakMinutes: config.breakMinutes, dailyGoal: config.dailyGoal)
+                currentSessionId = db.startSession(workMinutes: config.workMinutes, breakSeconds: config.breakSeconds, dailyGoal: config.dailyGoal)
                 startBreak()
             }
         default:
@@ -402,7 +406,7 @@ final class AppState {
         currentSessionWorkConfig = config.workMinutes
         targetTime = Date().addingTimeInterval(Double(config.workMinutes * 60))
         remainingSeconds = config.workMinutes * 60
-        currentSessionId = db.startSession(workMinutes: config.workMinutes, breakMinutes: config.breakMinutes, dailyGoal: config.dailyGoal)
+        currentSessionId = db.startSession(workMinutes: config.workMinutes, breakSeconds: config.breakSeconds, dailyGoal: config.dailyGoal)
         saveTimerState()
         startTicking()
     }
@@ -471,7 +475,7 @@ final class AppState {
         breakStartDate = Date()
         currentBreakActivity = breakActivities.randomElement()
         currentReminder = config.reminders.randomElement()
-        let secs = config.breakMinutes * 60
+        let secs = config.breakSeconds
         remainingSeconds = secs
 
         if let sid = currentSessionId {
@@ -714,7 +718,7 @@ final class AppState {
             restartPromptTimer?.invalidate()
         } else if !isInQuietHours &&
            ((newConfig.workMinutes != old.workMinutes && (phase == .working || phase == .paused)) ||
-            (newConfig.breakMinutes != old.breakMinutes && phase == .breaking)) {
+            (newConfig.breakSeconds != old.breakSeconds && phase == .breaking)) {
             // Delay prompt so rapid edits (typing, stepper clicks) don't spam it
             restartPromptTimer?.invalidate()
             restartPromptTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: false) { [weak self] _ in

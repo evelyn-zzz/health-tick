@@ -23,7 +23,7 @@ struct BreakCardView: View {
 
     private var timerProgress: Double {
         guard state.phase == .breaking else { return 0 }
-        let total = state.config.breakMinutes * 60
+        let total = state.config.breakSeconds
         guard total > 0 else { return 0 }
         return Double(state.remainingSeconds) / Double(total)
     }

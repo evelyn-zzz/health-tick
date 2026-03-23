@@ -375,7 +375,7 @@ struct OnboardingView: View {
 
     private func applySettings() {
         state.config.workMinutes = Int(workInterval)
-        state.config.breakMinutes = Int(breakDuration)
+        state.config.breakSeconds = Int(breakDuration) * 60
         state.config.dailyGoal = recommendedGoal
         state.config.workDays = workDays
 

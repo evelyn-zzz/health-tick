@@ -63,7 +63,11 @@ final class Database {
         """)
         let defaults: [(String, String)] = [
             ("work_minutes", "60"),
-            ("break_minutes", "2"),
+            ("break_seconds", "120"),
+            ("eye_care_mode", "0"),
+            ("saved_work_minutes", "60"),
+            ("saved_break_seconds", "120"),
+            ("saved_break_confirm", "1"),
             ("daily_goal", "8"),
             ("reminders", "[]"),
             ("sound_enabled", "1"),
@@ -99,7 +103,14 @@ final class Database {
                 let value = String(cString: sqlite3_column_text(stmt, 1))
                 switch key {
                 case "work_minutes": config.workMinutes = Int(value) ?? 60
-                case "break_minutes": config.breakMinutes = Int(value) ?? 2
+                case "break_minutes":
+                    // Migration: old key → convert minutes to seconds
+                    config.breakSeconds = (Int(value) ?? 2) * 60
+                case "break_seconds": config.breakSeconds = Int(value) ?? 120
+                case "eye_care_mode": config.eyeCareMode = value == "1"
+                case "saved_work_minutes": config.savedWorkMinutes = Int(value) ?? 60
+                case "saved_break_seconds": config.savedBreakSeconds = Int(value) ?? 120
+                case "saved_break_confirm": config.savedBreakConfirm = value == "1"
                 case "daily_goal": config.dailyGoal = Int(value) ?? 8
                 case "reminders":
                     if let data = value.data(using: .utf8),
@@ -153,7 +164,11 @@ final class Database {
         let remindersJSON = (try? JSONEncoder().encode(config.reminders))
             .flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
         exec("INSERT OR REPLACE INTO config (key, value) VALUES ('work_minutes', '\(config.workMinutes)')")
-        exec("INSERT OR REPLACE INTO config (key, value) VALUES ('break_minutes', '\(config.breakMinutes)')")
+        exec("INSERT OR REPLACE INTO config (key, value) VALUES ('break_seconds', '\(config.breakSeconds)')")
+        exec("INSERT OR REPLACE INTO config (key, value) VALUES ('eye_care_mode', '\(config.eyeCareMode ? "1" : "0")')")
+        exec("INSERT OR REPLACE INTO config (key, value) VALUES ('saved_work_minutes', '\(config.savedWorkMinutes)')")
+        exec("INSERT OR REPLACE INTO config (key, value) VALUES ('saved_break_seconds', '\(config.savedBreakSeconds)')")
+        exec("INSERT OR REPLACE INTO config (key, value) VALUES ('saved_break_confirm', '\(config.savedBreakConfirm ? "1" : "0")')")
         exec("INSERT OR REPLACE INTO config (key, value) VALUES ('daily_goal', '\(config.dailyGoal)')")
         exec("INSERT OR REPLACE INTO config (key, value) VALUES ('reminders', '\(remindersJSON.replacingOccurrences(of: "'", with: "''"))')")
         exec("INSERT OR REPLACE INTO config (key, value) VALUES ('sound_enabled', '\(config.soundEnabled ? "1" : "0")')")
@@ -177,6 +192,7 @@ final class Database {
         exec("INSERT OR REPLACE INTO config (key, value) VALUES ('work_hours_enabled', '\(config.workHoursEnabled ? "1" : "0")')")
         exec("INSERT OR REPLACE INTO config (key, value) VALUES ('work_start_time', '\(config.workStartTime)')")
         exec("INSERT OR REPLACE INTO config (key, value) VALUES ('work_end_time', '\(config.workEndTime)')")
+        exec("DELETE FROM config WHERE key = 'break_minutes'")
     }
 
     // MARK: - Records
@@ -356,10 +372,11 @@ final class Database {
 
     // MARK: - Sessions
 
-    func startSession(workMinutes: Int, breakMinutes: Int, dailyGoal: Int) -> Int64 {
+    func startSession(workMinutes: Int, breakSeconds: Int, dailyGoal: Int) -> Int64 {
         let now = ISO8601DateFormatter().string(from: Date())
         let today = Self.todayString()
-        let sql = "INSERT INTO sessions (date, work_start, work_minutes, break_minutes, daily_goal) VALUES ('\(today)', '\(now)', \(workMinutes), \(breakMinutes), \(dailyGoal))"
+        let breakMinutesValue = max(1, breakSeconds / 60)
+        let sql = "INSERT INTO sessions (date, work_start, work_minutes, break_minutes, daily_goal) VALUES ('\(today)', '\(now)', \(workMinutes), \(breakMinutesValue), \(dailyGoal))"
         exec(sql)
         return sqlite3_last_insert_rowid(db)
     }

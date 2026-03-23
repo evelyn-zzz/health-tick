@@ -362,8 +362,8 @@ struct AppTab: View {
                     ), range: 1...120, unit: L.unitMinutes, color: .green)
 
                     sliderRow(icon: "cup.and.saucer.fill", label: L.breakDuration, value: Binding(
-                        get: { Double(state.config.breakMinutes) },
-                        set: { state.config.breakMinutes = Int($0) }
+                        get: { Double(state.config.breakSeconds / 60) },
+                        set: { state.config.breakSeconds = Int($0) * 60 }
                     ), range: 1...15, unit: L.unitMinutes, color: .orange)
 
                     sliderRow(icon: "target", label: L.dailyGoal, value: Binding(
