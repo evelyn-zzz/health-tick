@@ -296,7 +296,7 @@ struct OnboardingView: View {
                         Text(L.onboardingBreakDuration)
                             .font(.callout)
                         Spacer()
-                        Text(formatBreakDuration(Int(breakDuration)))
+                        Text(L.formatBreakDuration(Int(breakDuration)))
                             .font(.callout.bold().monospacedDigit())
                             .foregroundStyle(.orange)
                             .frame(width: 80, alignment: .trailing)
@@ -333,7 +333,7 @@ struct OnboardingView: View {
                 Divider().padding(.leading, 44)
                 summaryRow(icon: "deskclock.fill", color: .green, label: L.workDuration, value: "\(Int(workInterval)) \(L.unitMinutes)")
                 Divider().padding(.leading, 44)
-                summaryRow(icon: "cup.and.saucer.fill", color: .orange, label: L.breakDuration, value: formatBreakDuration(Int(breakDuration)))
+                summaryRow(icon: "cup.and.saucer.fill", color: .orange, label: L.breakDuration, value: L.formatBreakDuration(Int(breakDuration)))
                 Divider().padding(.leading, 44)
                 summaryRow(icon: "target", color: .purple, label: L.onboardingDailyGoal, value: "\(recommendedGoal) \(L.unitTimes)")
             }
@@ -373,15 +373,6 @@ struct OnboardingView: View {
 
     // MARK: - Helpers
 
-    private func formatBreakDuration(_ seconds: Int) -> String {
-        if seconds < 60 {
-            return "\(seconds) \(L.unitSeconds)"
-        } else if seconds % 60 == 0 {
-            return "\(seconds / 60) \(L.unitMinutes)"
-        } else {
-            return "\(seconds / 60)\(L.unitMinutes)\(seconds % 60)\(L.unitSeconds)"
-        }
-    }
 
     // MARK: - Actions
 

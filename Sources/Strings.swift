@@ -101,6 +101,16 @@ struct L {
     static var unitSeconds: String { isZh ? "秒" : "s" }
     static var eyeCareMode: String { isZh ? "20-20-20 护眼模式" : "20-20-20 Eye Care" }
     static var eyeCareDesc: String { isZh ? "每 20 分钟远眺 20 秒，保护视力" : "Look 20 feet away for 20s every 20 min" }
+
+    static func formatBreakDuration(_ seconds: Int) -> String {
+        if seconds < 60 {
+            return "\(seconds) \(unitSeconds)"
+        } else if seconds % 60 == 0 {
+            return "\(seconds / 60) \(unitMinutes)"
+        } else {
+            return "\(seconds / 60)\(unitMinutes)\(seconds % 60)\(unitSeconds)"
+        }
+    }
     static var unitTimes: String { isZh ? "次" : "times" }
     static var breakWindow: String { isZh ? "休息窗口" : "Break Window" }
     static var preview: String { isZh ? "预览" : "Preview" }

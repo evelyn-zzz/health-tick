@@ -368,7 +368,7 @@ struct AppTab: View {
                             Image(systemName: "cup.and.saucer.fill").font(.callout).foregroundStyle(.orange).frame(width: 20)
                             Text(L.breakDuration).font(.callout)
                             Spacer()
-                            Text(formatBreakDuration(state.config.breakSeconds))
+                            Text(L.formatBreakDuration(state.config.breakSeconds))
                                 .font(.callout.monospacedDigit().bold())
                                 .foregroundStyle(.orange)
                                 .frame(width: 90, alignment: .trailing)
@@ -630,15 +630,6 @@ struct AppTab: View {
         }
     }
 
-    private func formatBreakDuration(_ seconds: Int) -> String {
-        if seconds < 60 {
-            return "\(seconds) \(L.unitSeconds)"
-        } else if seconds % 60 == 0 {
-            return "\(seconds / 60) \(L.unitMinutes)"
-        } else {
-            return "\(seconds / 60)\(L.unitMinutes)\(seconds % 60)\(L.unitSeconds)"
-        }
-    }
 
 }
 
@@ -670,6 +661,8 @@ struct BreakTab: View {
                 }
                 Divider().padding(.leading, 44)
                 toggleRow(icon: "hand.raised.fill", label: L.breakConfirm, isOn: $state.config.breakConfirm)
+                    .opacity(state.config.eyeCareMode ? 0.5 : 1.0)
+                    .disabled(state.config.eyeCareMode)
                 Divider().padding(.leading, 44)
                 toggleRow(icon: "flag.checkered", label: L.autoPauseOnGoal, isOn: $state.config.autoPauseOnGoal)
                 Divider().padding(.leading, 44)
