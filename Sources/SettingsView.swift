@@ -388,6 +388,61 @@ struct AppTab: View {
 
                     Divider().padding(.vertical, 4)
 
+                    // Long Break
+                    VStack(spacing: 4) {
+                        HStack {
+                            Image(systemName: "cup.and.saucer").font(.callout).foregroundStyle(.purple).frame(width: 20)
+                            Text(L.longBreak).font(.callout)
+                            Spacer()
+                            Toggle("", isOn: Binding(
+                                get: { state.config.longBreakEnabled },
+                                set: { state.config.longBreakEnabled = $0 }
+                            ))
+                            .toggleStyle(.switch)
+                            .labelsHidden()
+                            .tint(.purple)
+                        }
+                        Text(L.longBreakDesc)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.leading, 24)
+
+                        if state.config.longBreakEnabled {
+                            HStack(spacing: 6) {
+                                Text(L.longBreakEvery).font(.callout).foregroundStyle(.secondary)
+                                Picker("", selection: Binding(
+                                    get: { state.config.longBreakInterval },
+                                    set: { state.config.longBreakInterval = $0 }
+                                )) {
+                                    ForEach(2...8, id: \.self) { n in
+                                        Text("\(n)").tag(n)
+                                    }
+                                }
+                                .fixedSize()
+                                Text(L.longBreakCycles).font(.callout).foregroundStyle(.secondary)
+                                Spacer()
+                                Text(L.formatBreakDuration(state.config.longBreakSeconds))
+                                    .font(.callout.monospacedDigit().bold())
+                                    .foregroundStyle(.purple)
+                                    .frame(width: 90, alignment: .trailing)
+                            }
+                            .padding(.leading, 24)
+                            .padding(.top, 4)
+
+                            Slider(value: Binding(
+                                get: { Double(state.config.longBreakSeconds) },
+                                set: { state.config.longBreakSeconds = Int($0) }
+                            ), in: 300...1800, step: 60)
+                            .tint(.purple)
+                            .padding(.leading, 24)
+                        }
+                    }
+                    .opacity(state.config.eyeCareMode ? 0.5 : 1.0)
+                    .disabled(state.config.eyeCareMode)
+
+                    Divider().padding(.vertical, 4)
+
                     VStack(spacing: 4) {
                         HStack {
                             Image(systemName: "eye").font(.callout).foregroundStyle(.cyan).frame(width: 20)

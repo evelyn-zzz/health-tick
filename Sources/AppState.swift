@@ -157,6 +157,9 @@ struct AppConfig: Equatable {
     var workEndTime: String = "18:00"
     var shortcutEnabled: Bool = false
     var autoPauseOnGoal: Bool = false
+    var longBreakEnabled: Bool = false
+    var longBreakInterval: Int = 4            // every N cycles
+    var longBreakSeconds: Int = 900           // 15 minutes default
     var shortcutKeyCode: UInt16 = 36  // Return
     var shortcutModifiers: UInt = 1048576  // Command
 
@@ -254,6 +257,7 @@ final class AppState {
     var celebrateBadge: Badge?
     var todaySkipCount: Int = 0
     var quietRemainingSeconds: Int = 0
+    var completedCycles: Int = 0
 
     private var currentSessionId: Int64?
     private var currentSessionWorkConfig: Int = 0  // work_minutes at session creation
@@ -475,7 +479,9 @@ final class AppState {
         breakStartDate = Date()
         currentBreakActivity = breakActivities.randomElement()
         currentReminder = config.reminders.randomElement()
-        let secs = config.breakSeconds
+        let isLongBreak = config.longBreakEnabled && config.longBreakInterval > 0
+            && completedCycles > 0 && completedCycles % config.longBreakInterval == 0
+        let secs = isLongBreak ? config.longBreakSeconds : config.breakSeconds
         remainingSeconds = secs
 
         if let sid = currentSessionId {
@@ -509,6 +515,8 @@ final class AppState {
         if let sid = currentSessionId {
             db.endSessionBreak(sessionId: sid, actualSeconds: actualSeconds, skipped: false)
         }
+
+        completedCycles += 1
 
         let oldStreak = maxStreak
         let oldTotal = totalCount
@@ -885,6 +893,7 @@ final class AppState {
         autoQuietPaused = false
         breakWarning = ""
         breakSkipCount = 0
+        completedCycles = 0
         currentBreakActivity = nil
         currentReminder = nil
         pendingBadge = nil
