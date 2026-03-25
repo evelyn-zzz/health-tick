@@ -99,6 +99,11 @@ struct L {
     static var dailyGoal: String { isZh ? "每日目标" : "Daily Goal" }
     static var unitMinutes: String { isZh ? "分钟" : "min" }
     static var unitSeconds: String { isZh ? "秒" : "s" }
+    static var longBreak: String { isZh ? "长休息" : "Long Break" }
+    static var longBreakDesc: String { isZh ? "连续工作多轮后，自动延长休息时间" : "Automatically extend break after consecutive cycles" }
+    static var longBreakEvery: String { isZh ? "每" : "Every" }
+    static var longBreakCycles: String { isZh ? "轮" : "cycles" }
+    static var longBreakDuration: String { isZh ? "长休息时长" : "Long Break Duration" }
     static var eyeCareMode: String { isZh ? "20-20-20 护眼模式" : "20-20-20 Eye Care" }
     static var eyeCareDesc: String { isZh ? "每 20 分钟远眺 20 秒，保护视力" : "Look 20 feet away for 20s every 20 min" }
 

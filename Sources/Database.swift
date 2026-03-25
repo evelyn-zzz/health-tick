@@ -139,6 +139,9 @@ final class Database {
                 case "work_hours_enabled": config.workHoursEnabled = value == "1"
                 case "work_start_time": config.workStartTime = value
                 case "work_end_time": config.workEndTime = value
+                case "long_break_enabled": config.longBreakEnabled = value == "1"
+                case "long_break_interval": config.longBreakInterval = Int(value) ?? 4
+                case "long_break_seconds": config.longBreakSeconds = Int(value) ?? 900
                 case "auto_pause_on_goal": config.autoPauseOnGoal = value == "1"
                 case "shortcut_enabled": config.shortcutEnabled = value == "1"
                 case "shortcut_keycode": config.shortcutKeyCode = UInt16(value) ?? 36
@@ -185,6 +188,9 @@ final class Database {
         let workDaysJSON = (try? JSONEncoder().encode(config.workDays))
             .flatMap { String(data: $0, encoding: .utf8) } ?? "[2,3,4,5,6]"
         exec("INSERT OR REPLACE INTO config (key, value) VALUES ('work_days', '\(workDaysJSON)')")
+        exec("INSERT OR REPLACE INTO config (key, value) VALUES ('long_break_enabled', '\(config.longBreakEnabled ? "1" : "0")')")
+        exec("INSERT OR REPLACE INTO config (key, value) VALUES ('long_break_interval', '\(config.longBreakInterval)')")
+        exec("INSERT OR REPLACE INTO config (key, value) VALUES ('long_break_seconds', '\(config.longBreakSeconds)')")
         exec("INSERT OR REPLACE INTO config (key, value) VALUES ('auto_pause_on_goal', '\(config.autoPauseOnGoal ? "1" : "0")')")
         exec("INSERT OR REPLACE INTO config (key, value) VALUES ('shortcut_enabled', '\(config.shortcutEnabled ? "1" : "0")')")
         exec("INSERT OR REPLACE INTO config (key, value) VALUES ('shortcut_keycode', '\(config.shortcutKeyCode)')")
