@@ -163,7 +163,7 @@ struct BreakCardView: View {
         } label: {
             Text(L.skipButton(state.breakSkipCount, state.breakSkipNeeded))
                 .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(.secondary.opacity(0.6))
+                .foregroundStyle(.secondary)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 5)
         }

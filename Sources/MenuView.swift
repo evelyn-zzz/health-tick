@@ -38,7 +38,7 @@ struct MenuView: View {
             } label: {
                 Text(L.quitApp)
                     .font(.caption)
-                    .foregroundStyle(.primary.opacity(0.35))
+                    .foregroundStyle(.primary.opacity(0.55))
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderless)
