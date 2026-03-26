@@ -142,19 +142,18 @@ struct BreakCardView: View {
                 .foregroundStyle(.green.opacity(0.75))
             }
 
-            if !state.breakWarning.isEmpty {
-                Label {
-                    Text(state.breakWarning)
-                        .font(.system(size: 11))
-                } icon: {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: 11))
-                }
-                .foregroundStyle(.orange.opacity(0.9))
-                .padding(.horizontal, 10)
-                .padding(.vertical, 4)
-                .background(.orange.opacity(0.1), in: RoundedRectangle(cornerRadius: 6))
+            Label {
+                Text(state.breakWarning.isEmpty ? " " : state.breakWarning)
+                    .font(.system(size: 11))
+            } icon: {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 11))
             }
+            .foregroundStyle(.orange.opacity(0.9))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(.orange.opacity(0.1), in: RoundedRectangle(cornerRadius: 6))
+            .opacity(state.breakWarning.isEmpty ? 0 : 1)
         }
         .padding(.top, 14)
 

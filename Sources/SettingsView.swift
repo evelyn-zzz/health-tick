@@ -1023,7 +1023,7 @@ struct AboutTab: View {
 
             HStack(spacing: 6) {
                 Button {
-                    if let url = URL(string: "https://lifedever.github.io/sponsor/") {
+                    if let url = URL(string: "https://www.lifedever.com/") {
                         NSWorkspace.shared.open(url)
                     }
                 } label: {
