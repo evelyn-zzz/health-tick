@@ -100,6 +100,15 @@ private func hhmmFromDate(_ date: Date) -> String {
     return String(format: "%02d:%02d", h, m)
 }
 
+private func quietWeekdaysSummary(_ period: QuietHourPeriod) -> String {
+    guard let days = period.weekdays, !days.isEmpty else {
+        return L.quietWeekdaysAll
+    }
+    let order = [2, 3, 4, 5, 6, 7, 1] // Mon-Sun
+    let names = order.filter { days.contains($0) }.map { L.weekdayName($0) }
+    return names.joined(separator: " ")
+}
+
 // MARK: - System Tab
 
 struct SystemTab: View {
@@ -348,6 +357,7 @@ struct SystemTab: View {
 struct AppTab: View {
     @Environment(AppState.self) var state
     @State private var showQuietHelp = false
+    @State private var expandedQuietIndex: Int? = nil
     @State private var showWorkHoursHelp = false
 
     var body: some View {
@@ -621,39 +631,23 @@ struct AppTab: View {
                         }
                         .padding(.horizontal, 14)
 
-                        ForEach(Array(state.config.quietHours.enumerated()), id: \.offset) { i, period in
-                            HStack(spacing: 8) {
-                                DatePicker("", selection: Binding(
-                                    get: { dateFromHHmm(period.start) },
-                                    set: { state.config.quietHours[i].start = hhmmFromDate($0) }
-                                ), displayedComponents: .hourAndMinute)
-                                .labelsHidden()
-                                .frame(width: 80)
-
-                                Text("—")
-                                    .foregroundStyle(.secondary)
-
-                                DatePicker("", selection: Binding(
-                                    get: { dateFromHHmm(period.end) },
-                                    set: { state.config.quietHours[i].end = hhmmFromDate($0) }
-                                ), displayedComponents: .hourAndMinute)
-                                .labelsHidden()
-                                .frame(width: 80)
-
-                                Spacer()
-
-                                Button {
+                        ForEach(Array(state.config.quietHours.enumerated()), id: \.offset) { i, _ in
+                            QuietHourRow(
+                                period: Binding(
+                                    get: { state.config.quietHours[i] },
+                                    set: { state.config.quietHours[i] = $0 }
+                                ),
+                                isExpanded: expandedQuietIndex == i,
+                                onToggleExpand: {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        expandedQuietIndex = expandedQuietIndex == i ? nil : i
+                                    }
+                                },
+                                onDelete: {
+                                    if expandedQuietIndex == i { expandedQuietIndex = nil }
                                     state.config.quietHours.remove(at: i)
-                                } label: {
-                                    Image(systemName: "xmark")
-                                        .font(.system(size: 9, weight: .bold))
-                                        .foregroundStyle(.tertiary)
-                                        .frame(width: 18, height: 18)
-                                        .background(.quaternary, in: Circle())
                                 }
-                                .buttonStyle(.borderless)
-                                .handCursor()
-                            }
+                            )
                             .padding(.horizontal, 14)
                         }
                     }
@@ -1130,6 +1124,135 @@ struct ShortcutRecorderView: View {
 }
 
 // MARK: - Hand Cursor
+
+// MARK: - Quiet Hour Row
+
+private struct QuietHourRow: View {
+    @Binding var period: QuietHourPeriod
+    let isExpanded: Bool
+    let onToggleExpand: () -> Void
+    let onDelete: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                DatePicker("", selection: startBinding, displayedComponents: .hourAndMinute)
+                    .labelsHidden()
+                    .frame(width: 80)
+
+                Text("—").foregroundStyle(.secondary)
+
+                DatePicker("", selection: endBinding, displayedComponents: .hourAndMinute)
+                    .labelsHidden()
+                    .frame(width: 80)
+
+                weekdayBadge
+
+                Spacer()
+
+                deleteButton
+            }
+
+            if isExpanded {
+                QuietWeekdayPicker(weekdays: $period.weekdays)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+    }
+
+    private var startBinding: Binding<Date> {
+        Binding(
+            get: { dateFromHHmm(period.start) },
+            set: { period.start = hhmmFromDate($0) }
+        )
+    }
+
+    private var endBinding: Binding<Date> {
+        Binding(
+            get: { dateFromHHmm(period.end) },
+            set: { period.end = hhmmFromDate($0) }
+        )
+    }
+
+    private var weekdayBadge: some View {
+        let hasWeekdays = period.weekdays != nil
+        let summary = quietWeekdaysSummary(period)
+        return Button(action: onToggleExpand) {
+            HStack(spacing: 4) {
+                Image(systemName: "calendar")
+                    .font(.system(size: 10))
+                Text(summary)
+                    .font(.system(size: 11, weight: hasWeekdays ? .medium : .regular))
+                Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                    .font(.system(size: 8, weight: .semibold))
+            }
+            .foregroundStyle(hasWeekdays ? Color.purple : Color.secondary)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(
+                hasWeekdays ? Color.purple.opacity(0.1) : Color.gray.opacity(0.08),
+                in: RoundedRectangle(cornerRadius: 5)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 5)
+                    .strokeBorder(hasWeekdays ? Color.purple.opacity(0.3) : Color.gray.opacity(0.15), lineWidth: 0.5)
+            )
+        }
+        .buttonStyle(.borderless)
+        .handCursor()
+    }
+
+    private var deleteButton: some View {
+        Button(action: onDelete) {
+            Image(systemName: "xmark")
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(.tertiary)
+                .frame(width: 18, height: 18)
+                .background(.quaternary, in: Circle())
+        }
+        .buttonStyle(.borderless)
+        .handCursor()
+    }
+}
+
+// MARK: - Quiet Weekday Picker
+
+private struct QuietWeekdayPicker: View {
+    @Binding var weekdays: Set<Int>?
+
+    private let dayOrder = [2, 3, 4, 5, 6, 7, 1]
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(dayOrder, id: \.self) { day in
+                dayButton(day)
+            }
+        }
+    }
+
+    private func dayButton(_ day: Int) -> some View {
+        let isSelected = weekdays?.contains(day) ?? false
+        return Button {
+            var days = weekdays ?? []
+            if days.contains(day) {
+                days.remove(day)
+            } else {
+                days.insert(day)
+            }
+            weekdays = days.isEmpty ? nil : days
+        } label: {
+            Text(L.weekdayName(day))
+                .font(.system(size: 10, weight: .medium))
+                .frame(width: 28, height: 20)
+                .foregroundStyle(isSelected ? .white : .secondary)
+                .background(
+                    isSelected ? Color.purple.opacity(0.8) : Color.gray.opacity(0.1),
+                    in: RoundedRectangle(cornerRadius: 4)
+                )
+        }
+        .buttonStyle(.borderless)
+    }
+}
 
 extension View {
     func handCursor() -> some View {

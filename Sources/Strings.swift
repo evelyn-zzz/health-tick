@@ -371,7 +371,9 @@ struct L {
     static var quietHours: String { isZh ? "休息时段" : "Quiet Hours" }
     static var quietHoursActive: String { isZh ? "休息时段中" : "Quiet Hours" }
     static var addQuietHour: String { isZh ? "添加休息时段" : "Add Quiet Period" }
-    static var quietHoursHelp: String { isZh ? "在休息时段内，计时器会自动暂停，不会弹出休息提醒。适合设置午休、会议等不需要提醒的时间段。" : "During quiet hours, the timer pauses automatically and no break reminders will appear. Use this for lunch breaks, meetings, or other times you don't need reminders." }
+    static var quietHoursHelp: String { isZh ? "在休息时段内，计时器会自动暂停，不会弹出休息提醒。适合设置午休、会议等不需要提醒的时间段。可指定星期几生效，不选则每天生效。" : "During quiet hours, the timer pauses automatically and no break reminders will appear. Use this for lunch breaks, meetings, or other times you don't need reminders. You can specify which days of the week it applies to." }
+    static var quietWeekdaysAll: String { isZh ? "每天" : "Every day" }
+    static var quietSpecifyDays: String { isZh ? "指定日期" : "Specify days" }
     static var workDays: String { isZh ? "工作日" : "Work Days" }
     static var monday: String { isZh ? "一" : "Mon" }
     static var tuesday: String { isZh ? "二" : "Tue" }

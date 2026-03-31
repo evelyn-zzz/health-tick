@@ -37,9 +37,17 @@ enum AppAppearance: String, CaseIterable, Equatable {
 struct QuietHourPeriod: Codable, Equatable {
     var start: String  // "HH:mm"
     var end: String    // "HH:mm"
+    var weekdays: Set<Int>?  // nil or empty = every day; Calendar weekday: 1=Sun,2=Mon,...,7=Sat
 
     func isActive(at date: Date) -> Bool {
         let cal = Calendar.current
+
+        // Check weekday filter
+        if let days = weekdays, !days.isEmpty {
+            let today = cal.component(.weekday, from: date)
+            if !days.contains(today) { return false }
+        }
+
         let h = cal.component(.hour, from: date)
         let m = cal.component(.minute, from: date)
         let now = h * 60 + m
