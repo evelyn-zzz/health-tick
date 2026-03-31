@@ -357,7 +357,7 @@ struct SystemTab: View {
 struct AppTab: View {
     @Environment(AppState.self) var state
     @State private var showQuietHelp = false
-    @State private var expandedQuietIndex: Int? = nil
+    @State private var expandedQuietId: UUID? = nil
     @State private var showWorkHoursHelp = false
 
     var body: some View {
@@ -631,21 +631,19 @@ struct AppTab: View {
                         }
                         .padding(.horizontal, 14)
 
-                        ForEach(Array(state.config.quietHours.enumerated()), id: \.offset) { i, _ in
+                        ForEach($state.config.quietHours) { $period in
+                            let periodId = period.id
                             QuietHourRow(
-                                period: Binding(
-                                    get: { state.config.quietHours[i] },
-                                    set: { state.config.quietHours[i] = $0 }
-                                ),
-                                isExpanded: expandedQuietIndex == i,
+                                period: $period,
+                                isExpanded: expandedQuietId == periodId,
                                 onToggleExpand: {
                                     withAnimation(.easeInOut(duration: 0.2)) {
-                                        expandedQuietIndex = expandedQuietIndex == i ? nil : i
+                                        expandedQuietId = expandedQuietId == periodId ? nil : periodId
                                     }
                                 },
                                 onDelete: {
-                                    if expandedQuietIndex == i { expandedQuietIndex = nil }
-                                    state.config.quietHours.remove(at: i)
+                                    if expandedQuietId == periodId { expandedQuietId = nil }
+                                    state.config.quietHours.removeAll { $0.id == periodId }
                                 }
                             )
                             .padding(.horizontal, 14)

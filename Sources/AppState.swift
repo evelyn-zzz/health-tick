@@ -34,10 +34,26 @@ enum AppAppearance: String, CaseIterable, Equatable {
     }
 }
 
-struct QuietHourPeriod: Codable, Equatable {
+struct QuietHourPeriod: Codable, Equatable, Identifiable {
+    var id: UUID
     var start: String  // "HH:mm"
     var end: String    // "HH:mm"
     var weekdays: Set<Int>?  // nil or empty = every day; Calendar weekday: 1=Sun,2=Mon,...,7=Sat
+
+    init(id: UUID = UUID(), start: String, end: String, weekdays: Set<Int>? = nil) {
+        self.id = id
+        self.start = start
+        self.end = end
+        self.weekdays = weekdays
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = (try? container.decode(UUID.self, forKey: .id)) ?? UUID()
+        self.start = try container.decode(String.self, forKey: .start)
+        self.end = try container.decode(String.self, forKey: .end)
+        self.weekdays = try container.decodeIfPresent(Set<Int>.self, forKey: .weekdays)
+    }
 
     func isActive(at date: Date) -> Bool {
         let cal = Calendar.current
