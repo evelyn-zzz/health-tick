@@ -466,7 +466,7 @@ final class Database {
     func workMinutesForDate(_ date: String) -> Int {
         var stmt: OpaquePointer?
         // Only count completed sessions (work_end IS NOT NULL)
-        let sql = "SELECT work_start, work_end, work_minutes FROM sessions WHERE date = '\(date)' AND work_end IS NOT NULL"
+        let sql = "SELECT work_start, work_end FROM sessions WHERE date = '\(date)' AND work_end IS NOT NULL"
         guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return 0 }
         defer { sqlite3_finalize(stmt) }
         let iso = ISO8601DateFormatter()
@@ -474,11 +474,9 @@ final class Database {
         while sqlite3_step(stmt) == SQLITE_ROW {
             let startStr = String(cString: sqlite3_column_text(stmt, 0))
             guard let start = iso.date(from: startStr) else { continue }
-            let configuredMinutes = Int(sqlite3_column_int(stmt, 2))
             let endStr = String(cString: sqlite3_column_text(stmt, 1))
             let end = iso.date(from: endStr) ?? start
-            let elapsed = min(max(0, Int(end.timeIntervalSince(start) / 60)), configuredMinutes)
-            total += elapsed
+            total += max(0, Int(end.timeIntervalSince(start) / 60))
         }
         return total
     }
@@ -500,17 +498,15 @@ final class Database {
         var map: [String: Int] = [:]
         var stmt: OpaquePointer?
         // Only count completed sessions (work_end IS NOT NULL)
-        let sql = "SELECT date, work_start, work_end, work_minutes FROM sessions WHERE date >= '\(start)' AND work_end IS NOT NULL"
+        let sql = "SELECT date, work_start, work_end FROM sessions WHERE date >= '\(start)' AND work_end IS NOT NULL"
         if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
             while sqlite3_step(stmt) == SQLITE_ROW {
                 let d = String(cString: sqlite3_column_text(stmt, 0))
                 let startStr = String(cString: sqlite3_column_text(stmt, 1))
                 guard let startDate = iso.date(from: startStr) else { continue }
-                let configuredMinutes = Int(sqlite3_column_int(stmt, 3))
                 let endStr = String(cString: sqlite3_column_text(stmt, 2))
                 let endDate = iso.date(from: endStr) ?? startDate
-                let elapsed = min(max(0, Int(endDate.timeIntervalSince(startDate) / 60)), configuredMinutes)
-                map[d, default: 0] += elapsed
+                map[d, default: 0] += max(0, Int(endDate.timeIntervalSince(startDate) / 60))
             }
         }
         sqlite3_finalize(stmt)

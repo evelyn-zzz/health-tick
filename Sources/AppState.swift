@@ -285,6 +285,7 @@ final class AppState {
 
     private var currentSessionId: Int64?
     private var currentSessionWorkConfig: Int = 0  // work_minutes at session creation
+    private var alertingStartDate: Date?            // set when transitioning to alerting
     private var breakStartDate: Date?
     private var targetTime: Date = Date()
     private var pausedRemaining: Int = 0
@@ -430,6 +431,19 @@ final class AppState {
 
     func startWork() {
         goalAutoStopped = false
+
+        // Quiet hours boundary check — activate quiet mode instead of starting a new session
+        let activeReasons = currentActiveQuietReasons()
+        let nonSkipped = activeReasons.subtracting(skippedQuietReasons)
+        if !nonSkipped.isEmpty {
+            if !isInQuietHours {
+                isInQuietHours = true
+                autoQuietPaused = true
+                startQuietCountdown()
+            }
+            return
+        }
+
         phase = .working
         currentSessionWorkConfig = config.workMinutes
         targetTime = Date().addingTimeInterval(Double(config.workMinutes * 60))
@@ -477,6 +491,7 @@ final class AppState {
         playSound()
 
         if config.breakConfirm {
+            alertingStartDate = Date()
             phase = .alerting
             remainingSeconds = 0
             saveTimerState()
@@ -498,6 +513,7 @@ final class AppState {
     private func startBreak() {
         phase = .breaking
         timer?.invalidate()  // Stop work timer; overlay manager handles break countdown
+        alertingStartDate = nil
         breakWarning = ""
         breakSkipCount = 0
         breakStartDate = Date()
@@ -655,6 +671,10 @@ final class AppState {
             return max(0, currentSessionWorkConfig * 60 - remainingSeconds) / 60
         } else if phase == .paused, pausedPhase == .working {
             return max(0, currentSessionWorkConfig * 60 - pausedRemaining) / 60
+        } else if phase == .alerting, let start = alertingStartDate {
+            // Work session ended, user hasn't confirmed break yet — count actual elapsed
+            let alertingExtra = Int(Date().timeIntervalSince(start) / 60)
+            return currentSessionWorkConfig + alertingExtra
         }
         return 0
     }
@@ -1028,50 +1048,18 @@ final class AppState {
         let nonSkippedReasons = activeReasons.subtracting(skippedQuietReasons)
         let shouldPause = !nonSkippedReasons.isEmpty
 
+        // Don't interrupt an in-progress work cycle (working/alerting/breaking/waiting).
+        // Quiet hours will activate at the next startWork() boundary so the current
+        // session can complete and record the break properly.
+        let midCycle = phase == .working || phase == .alerting || phase == .breaking || phase == .waiting
+        if shouldPause && !isInQuietHours && midCycle {
+            return
+        }
+
         if shouldPause && !isInQuietHours {
             isInQuietHours = true
-            if phase == .breaking {
-                // End break cleanly without creating a new session
-                timer?.invalidate()
-                alertRepeatTimer?.invalidate()
-                alertRepeatTimer = nil
-                breakWarning = ""
-                overlayManager.hide()
-                let actualSeconds: Int?
-                if let start = breakStartDate {
-                    actualSeconds = Int(Date().timeIntervalSince(start))
-                } else {
-                    actualSeconds = nil
-                }
-                if let sid = currentSessionId {
-                    db.endSessionBreak(sessionId: sid, actualSeconds: actualSeconds, skipped: false)
-                    currentSessionId = nil
-                }
-                phase = .paused
-                autoQuietPaused = true
-            }
-            if phase == .alerting {
-                alertRepeatTimer?.invalidate()
-                alertRepeatTimer = nil
-                overlayManager.hideAll()
-                phase = .paused
-                autoQuietPaused = true
-            }
-            if phase == .waiting {
-                overlayManager.hideAll()
-                pendingBadge = nil
-                phase = .paused
-                autoQuietPaused = true
-            }
-            if phase == .working {
-                timer?.invalidate()
-                if let sid = currentSessionId {
-                    db.endWork(sessionId: sid)
-                    currentSessionId = nil
-                }
-                phase = .paused
-                autoQuietPaused = true
-            }
+            // Only .paused can reach here now (midCycle guarded above)
+            autoQuietPaused = true
             startQuietCountdown()
         } else if !shouldPause && isInQuietHours {
             isInQuietHours = false
