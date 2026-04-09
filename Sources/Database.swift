@@ -853,7 +853,7 @@ final class Database {
             while sqlite3_step(stmt) == SQLITE_ROW {
                 let workStartStr = String(cString: sqlite3_column_text(stmt, 0))
                 let workEndStr = sqlite3_column_type(stmt, 1) != SQLITE_NULL ? String(cString: sqlite3_column_text(stmt, 1)) : nil
-                let workMinutes = Int(sqlite3_column_int(stmt, 2))
+                let _ = Int(sqlite3_column_int(stmt, 2))
                 
                 let breakStartStr = sqlite3_column_type(stmt, 3) != SQLITE_NULL ? String(cString: sqlite3_column_text(stmt, 3)) : nil
                 let breakEndStr = sqlite3_column_type(stmt, 4) != SQLITE_NULL ? String(cString: sqlite3_column_text(stmt, 4)) : nil
@@ -863,7 +863,7 @@ final class Database {
                 
                 if let start = iso.date(from: workStartStr) {
                     let end = workEndStr.flatMap { iso.date(from: $0) }
-                    let actualMins = end.map { Int(round($0.timeIntervalSince(start) / 60.0)) } ?? workMinutes
+                    let actualMins = end.map { Int($0.timeIntervalSince(start) / 60) } ?? 0
                     result.append(DaySession(
                         type: .work,
                         start: start,
@@ -876,7 +876,7 @@ final class Database {
                 
                 if let bStartStr = breakStartStr, let start = iso.date(from: bStartStr) {
                     let end = breakEndStr.flatMap { iso.date(from: $0) }
-                    let actualMins = end.map { Int(round($0.timeIntervalSince(start) / 60.0)) } ?? 0
+                    let actualMins = end.map { Int($0.timeIntervalSince(start) / 60) } ?? 0
                     result.append(DaySession(
                         type: .break,
                         start: start,
