@@ -792,7 +792,7 @@ final class Database {
                 
                 if let start = iso.date(from: workStartStr) {
                     let end = workEndStr.flatMap { iso.date(from: $0) }
-                    let actualMins = end.map { Int($0.timeIntervalSince(start) / 60) } ?? workMinutes
+                    let actualMins = end.map { Int(round($0.timeIntervalSince(start) / 60.0)) } ?? workMinutes
                     result.append(DaySession(
                         type: .work,
                         start: start,
@@ -804,12 +804,12 @@ final class Database {
                 }
                 
                 if let bStartStr = breakStartStr, let start = iso.date(from: bStartStr) {
-                    let end = breakEndStr.flatMap { iso.date(from: $0) }
+                    let actualMins = end.map { Int(round($0.timeIntervalSince(start) / 60.0)) } ?? 0
                     result.append(DaySession(
                         type: .break,
                         start: start,
                         end: end,
-                        durationMinutes: (breakActualSecs ?? 0) / 60,
+                        durationMinutes: max(0, actualMins),
                         skipped: skipped,
                         goal: goal
                     ))

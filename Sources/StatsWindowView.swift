@@ -661,54 +661,77 @@ struct DayDetailView: View {
 
 
     private func timelineRow(session: Database.DaySession) -> some View {
-        HStack(alignment: .top, spacing: 16) {
+        let themeColor = session.type == .work ? Color.green : Color.orange
+        
+        return HStack(alignment: .top, spacing: 14) {
             // Time column
-            VStack(alignment: .trailing, spacing: 2) {
+            VStack(alignment: .trailing, spacing: 12) {
                 Text(formatTime(session.start))
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                
                 if let end = session.end {
                     Text(formatTime(end))
-                        .font(.system(size: 10))
-                        .foregroundStyle(.tertiary)
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundStyle(.secondary)
                 }
             }
             .frame(width: 45)
+            .padding(.top, 2)
 
             // Indicator
             VStack(spacing: 0) {
                 Circle()
-                    .fill(session.type == .work ? Color.green : Color.orange)
-                    .frame(width: 8, height: 8)
-                    .padding(.top, 4)
-                Rectangle()
-                    .fill(Color.primary.opacity(0.1))
-                    .frame(width: 2)
+                    .fill(themeColor)
+                    .frame(width: 10, height: 10)
+                
+                if session.end != nil {
+                    Rectangle()
+                        .fill(themeColor.opacity(0.3))
+                        .frame(width: 4)
+                        .frame(minHeight: 30)
+                        .padding(.vertical, 2)
+                    
+                    Circle()
+                        .fill(themeColor.opacity(0.5))
+                        .frame(width: 6, height: 6)
+                } else {
+                    Rectangle()
+                        .fill(Color.primary.opacity(0.1))
+                        .frame(width: 2)
+                        .frame(minHeight: 30)
+                }
             }
 
             // Content
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Text(session.type == .work ? (L.isZhAccess ? "专注工作" : "Deep Work") : (L.isZhAccess ? "休息一下" : "Break Time"))
-                        .font(.system(size: 13, weight: .bold))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(session.type == .work ? (L.isZhAccess ? "专注工作" : "Deep Work") : (L.isZhAccess ? "休息一下" : "Break Time"))
+                            .font(.system(size: 14, weight: .bold))
+                        
+                        if session.type == .break && session.skipped {
+                            Text(L.isZhAccess ? "已跳过" : "Skipped")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundStyle(.red)
+                        }
+                    }
+                    
                     Spacer()
-                    if session.type == .work {
-                        Text("\(session.durationMinutes)m")
-                            .font(.system(size: 11, weight: .medium, design: .rounded))
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color.green.opacity(0.1), in: RoundedRectangle(cornerRadius: 4))
-                            .foregroundStyle(.green)
-                    } else if session.skipped {
-                        Text(L.isZhAccess ? "已跳过" : "Skipped")
-                            .font(.system(size: 10))
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color.red.opacity(0.1), in: RoundedRectangle(cornerRadius: 4))
-                            .foregroundStyle(.red)
+                    
+                    // Duration badge - now shown for both types
+                    if session.durationMinutes > 0 || (session.type == .break && !session.skipped) {
+                        let displayDuration = max(1, session.durationMinutes)
+                        Text("\(displayDuration)m")
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(themeColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
+                            .foregroundStyle(themeColor)
                     }
                 }
-                
+                .padding(.trailing, 4)
             }
+            .padding(.leading, 8)
             .padding(.bottom, 24)
         }
         .padding(.horizontal, 24)
