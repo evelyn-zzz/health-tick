@@ -743,8 +743,9 @@ struct DayDetailView: View {
                     
                     // Duration badge
                     if session.durationMinutes > 0 || (session.type == .break && !session.skipped) {
-                        let displayDuration = max(1, session.durationMinutes)
-                        Text("\(displayDuration)m")
+                        let d = max(1, session.durationMinutes)
+                        let text = d < 60 ? "\(d)m" : (d % 60 == 0 ? "\(d/60)h" : "\(d/60)h\(d%60)m")
+                        Text(text)
                             .font(.system(size: 11, weight: .bold, design: .rounded))
                             .padding(.horizontal, 8)
                             .padding(.vertical, 3)
