@@ -585,6 +585,12 @@ struct DayDetailView: View {
     private let db = Database.shared
     
     @State private var timelineItems: [Database.DaySession] = []
+    @State private var viewMode: ViewMode = .list
+    
+    enum ViewMode {
+        case list
+        case heatmap
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -593,17 +599,29 @@ struct DayDetailView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(formatFullDate(date))
                         .font(.system(size: 16, weight: .bold))
-                    Text(L.isZhAccess ? "当日活动记录" : "Daily Activity Log")
+                    Text(viewMode == .list ? (L.isZhAccess ? "时间轴视图" : "Timeline View") : (L.isZhAccess ? "24h 分布图" : "24h Heatmap"))
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
+
+                Picker("", selection: $viewMode) {
+                    Image(systemName: "list.bullet").tag(ViewMode.list)
+                    Image(systemName: "square.grid.3x3.fill").tag(ViewMode.heatmap)
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 70)
+                .controlSize(.small)
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
             .background(.ultraThinMaterial)
 
-            if timelineItems.isEmpty {
+            if viewMode == .heatmap {
+                Daily24hHeatmapView(date: date)
+                    .padding(24)
+                    .frame(maxHeight: .infinity, alignment: .top)
+            } else if timelineItems.isEmpty {
                 VStack(spacing: 12) {
                     Image(systemName: "calendar.badge.exclamationmark")
                         .font(.system(size: 40))
@@ -739,5 +757,59 @@ struct DayDetailView: View {
         let p = s.split(separator: "-")
         guard p.count == 3, let m = Int(p[1]), let d = Int(p[2]) else { return s }
         return L.isZhAccess ? "\(m)月\(d)日" : "\(m)/\(d)"
+    }
+}
+struct Daily24hHeatmapView: View {
+    let date: String
+    private let db = Database.shared
+    
+    var body: some View {
+        let blocks = db.day10MinActivity(date: date)
+        
+        VStack(spacing: 16) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 12), spacing: 4) {
+                ForEach(0..<144, id: \.self) { i in
+                    let status = blocks[i]
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(colorForStatus(status))
+                        .aspectRatio(1, contentMode: .fill)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 2)
+                                .stroke(Color.primary.opacity(0.05), lineWidth: 0.5)
+                        )
+                }
+            }
+            
+            HStack {
+                Text("00:00").font(.system(size: 10, design: .monospaced))
+                Spacer()
+                Text("12:00").font(.system(size: 10, design: .monospaced))
+                Spacer()
+                Text("23:50").font(.system(size: 10, design: .monospaced))
+            }
+            .foregroundStyle(.secondary)
+            
+            // Legend
+            HStack(spacing: 20) {
+                legendItem(L.phaseWorking, color: .green)
+                legendItem(L.phaseBreaking, color: .orange)
+            }
+            .padding(.top, 10)
+        }
+    }
+    
+    private func legendItem(_ text: String, color: Color) -> some View {
+        HStack(spacing: 6) {
+            Circle().fill(color).frame(width: 8, height: 8)
+            Text(text).font(.system(size: 11)).foregroundStyle(.secondary)
+        }
+    }
+    
+    private func colorForStatus(_ s: Database.ActivityType) -> Color {
+        switch s {
+        case .none: return Color.primary.opacity(0.05)
+        case .work: return .green
+        case .break: return .orange
+        }
     }
 }
