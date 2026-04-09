@@ -177,28 +177,7 @@ struct StatsWindowView: View {
         return VStack(spacing: 4) {
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: cols), spacing: 4) {
                 ForEach(Array(data.enumerated()), id: \.offset) { _, item in
-                    let isWorkDay = checkWorkDay(item.0)
-                    let baseColor: Color = isWorkDay ? .primary.opacity(0.08) : .primary.opacity(0.03)
-                    
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(item.1 > 0 ? Color.green.opacity(heatmapOpacity(item.1)) : baseColor)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 4)
-                                .stroke(isWorkDay ? Color.clear : Color.primary.opacity(0.1), lineWidth: 0.5)
-                        )
-                        .aspectRatio(1, contentMode: .fit)
-                        .overlay(
-                            VStack(spacing: 1) {
-                                Text(heatDay(item.0))
-                                    .font(.system(size: 10))
-                                    .foregroundStyle(item.1 > 0 ? .white.opacity(0.7) : .primary.opacity(0.2))
-                            }
-                        )
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            state.pendingDetailDate = item.0
-                            openWindow(id: "timeline")
-                        }
+                    heatmapCell(item: item, goal: goal)
                 }
             }
 
@@ -213,6 +192,40 @@ struct StatsWindowView: View {
             }
             .padding(.top, 4)
         }
+    }
+
+    private func heatmapCell(item: (String, Int), goal: Int) -> some View {
+        let isWorkDay = checkWorkDay(item.0)
+        let isToday = item.0 == Database.todayString()
+        let dayStr = heatDay(item.0)
+        let hasCount = item.1 > 0
+        let baseColor: Color = isWorkDay ? .primary.opacity(0.08) : .primary.opacity(0.03)
+        
+        return RoundedRectangle(cornerRadius: 4)
+            .fill(hasCount ? Color.green.opacity(heatmapOpacity(item.1)) : baseColor)
+            .overlay(
+                RoundedRectangle(cornerRadius: 4)
+                    .stroke(isWorkDay ? Color.clear : Color.primary.opacity(0.1), lineWidth: 0.5)
+            )
+            .aspectRatio(1, contentMode: .fit)
+            .overlay(
+                VStack(spacing: 1) {
+                    if isToday {
+                        Text(dayStr)
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(hasCount ? Color.white : Color.primary.opacity(0.6))
+                    } else {
+                        Text(dayStr)
+                            .font(.system(size: 10, weight: .regular))
+                            .foregroundStyle(hasCount ? Color.white.opacity(0.7) : Color.primary.opacity(0.2))
+                    }
+                }
+            )
+            .contentShape(Rectangle())
+            .onTapGesture {
+                state.pendingDetailDate = item.0
+                openWindow(id: "timeline")
+            }
     }
 
     private func itemColor(ratio: Double) -> Color {

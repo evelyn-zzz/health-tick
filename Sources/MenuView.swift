@@ -324,9 +324,10 @@ private struct MenuStatsContent: View {
                                     openWindow(id: "timeline")
                                     menuBringToFront()
                                 }
+                            let isToday = item.0 == Database.todayString()
                             Text(menuShortDay(item.0))
-                                .font(.system(size: 8))
-                                .foregroundStyle(.primary.opacity(0.45))
+                                .font(.system(size: 8, weight: isToday ? .bold : .regular))
+                                .foregroundStyle(isToday ? Color.primary : Color.primary.opacity(0.45))
                         }
                     }
                 }
