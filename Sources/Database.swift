@@ -271,24 +271,59 @@ final class Database {
         return maxS
     }
 
-    func recent7DaysCounts() -> [(String, Int)] {
+    func thisWeekCounts() -> [(String, Int)] {
         let today = Date()
+        let cal = Calendar.current
+        let weekday = cal.component(.weekday, from: today)
+        let daysToMonday = (weekday == 1 ? 6 : weekday - 2)
+        let monday = cal.date(byAdding: .day, value: -daysToMonday, to: today)!
         let fmt = Self.dateFmt()
+        let startStr = fmt.string(from: monday)
+        
         var map: [String: Int] = [:]
         var stmt: OpaquePointer?
-        let start = fmt.string(from: Calendar.current.date(byAdding: .day, value: -6, to: today)!)
-        let sql = "SELECT date, COUNT(*) FROM records WHERE date >= '\(start)' GROUP BY date"
+        let sql = "SELECT date, COUNT(*) FROM records WHERE date >= '\(startStr)' GROUP BY date"
         if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
             while sqlite3_step(stmt) == SQLITE_ROW {
-                let d = String(cString: sqlite3_column_text(stmt, 0))
-                map[d] = Int(sqlite3_column_int(stmt, 1))
+                map[String(cString: sqlite3_column_text(stmt, 0))] = Int(sqlite3_column_int(stmt, 1))
             }
         }
         sqlite3_finalize(stmt)
+        
         var result: [(String, Int)] = []
-        for i in stride(from: 6, through: 0, by: -1) {
-            let d = fmt.string(from: Calendar.current.date(byAdding: .day, value: -i, to: today)!)
-            result.append((d, map[d] ?? 0))
+        for i in 0..<7 {
+            let d = cal.date(byAdding: .day, value: i, to: monday)!
+            let ds = fmt.string(from: d)
+            result.append((ds, map[ds] ?? 0))
+        }
+        return result
+    }
+
+    func last4WeeksCounts() -> [(String, Int)] {
+        let today = Date()
+        let cal = Calendar.current
+        let weekday = cal.component(.weekday, from: today)
+        let daysToMonday = (weekday == 1 ? 6 : weekday - 2)
+        let currentMonday = cal.date(byAdding: .day, value: -daysToMonday, to: today)!
+        let start = cal.date(byAdding: .day, value: -21, to: currentMonday)! 
+        let fmt = Self.dateFmt()
+        let startStr = fmt.string(from: start)
+        
+        var map: [String: Int] = [:]
+        var stmt: OpaquePointer?
+        let sql = "SELECT date, COUNT(*) FROM records WHERE date >= '\(startStr)' GROUP BY date"
+        if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                map[String(cString: sqlite3_column_text(stmt, 0))] = Int(sqlite3_column_int(stmt, 1))
+            }
+        }
+        sqlite3_finalize(stmt)
+        
+        var result: [(String, Int)] = []
+        for i in 0..<28 {
+            let d = cal.date(byAdding: .day, value: i, to: start)!
+            let ds = fmt.string(from: d)
+            result.append((ds, map[ds] ?? 0))
         }
         return result
     }
@@ -500,6 +535,42 @@ final class Database {
 
     func todayBreakMinutes() -> Int {
         breakMinutesForDate(Self.todayString())
+    }
+
+    func last4WeeksWorkMinutes() -> [(String, Int)] {
+        let today = Date()
+        let cal = Calendar.current
+        let weekday = cal.component(.weekday, from: today)
+        let daysToMonday = (weekday == 1 ? 6 : weekday - 2)
+        let currentMonday = cal.date(byAdding: .day, value: -daysToMonday, to: today)!
+        let start = cal.date(byAdding: .day, value: -21, to: currentMonday)!
+        let fmt = Self.dateFmt()
+        let iso = ISO8601DateFormatter()
+        let startStr = fmt.string(from: start)
+        
+        var map: [String: Int] = [:]
+        var stmt: OpaquePointer?
+        // Only count completed sessions (work_end IS NOT NULL)
+        let sql = "SELECT date, work_start, work_end FROM sessions WHERE date >= '\(startStr)' AND work_end IS NOT NULL"
+        if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                let d = String(cString: sqlite3_column_text(stmt, 0))
+                let startStr = String(cString: sqlite3_column_text(stmt, 1))
+                guard let startDate = iso.date(from: startStr) else { continue }
+                let endStr = String(cString: sqlite3_column_text(stmt, 2))
+                let endDate = iso.date(from: endStr) ?? startDate
+                map[d, default: 0] += max(0, Int(endDate.timeIntervalSince(startDate) / 60))
+            }
+        }
+        sqlite3_finalize(stmt)
+        
+        var result: [(String, Int)] = []
+        for i in 0..<28 {
+            let d = cal.date(byAdding: .day, value: i, to: start)!
+            let ds = fmt.string(from: d)
+            result.append((ds, map[ds] ?? 0))
+        }
+        return result
     }
 
     func recent7DaysWorkMinutes() -> [(String, Int)] {

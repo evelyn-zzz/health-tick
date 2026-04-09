@@ -142,14 +142,14 @@ struct StatsWindowView: View {
     // MARK: - Heatmap
 
     private var heatmapSection: some View {
-        let checkInData = db.last30DaysCounts()
-        let workData = db.last30DaysWorkMinutes()
+        let checkInData = db.last4WeeksCounts()
+        let workData = db.last4WeeksWorkMinutes()
         let goal = state.config.dailyGoal
         let isWorkMode = heatmapMode == .workTime
 
         return VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(L.last30Days)
+                Text(L.last4Weeks)
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.secondary)
                 Spacer()
@@ -173,7 +173,7 @@ struct StatsWindowView: View {
     }
 
     private func checkInHeatmap(data: [(String, Int)], goal: Int) -> some View {
-        let cols = 10
+        let cols = 7
         return VStack(spacing: 4) {
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: cols), spacing: 4) {
                 ForEach(Array(data.enumerated()), id: \.offset) { _, item in

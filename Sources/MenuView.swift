@@ -284,7 +284,7 @@ private struct MenuStatsContent: View {
 
             // Toggle for 7-day vs 24h
             HStack {
-                Text(show24hHeatmap ? L.isZhAccess ? "今日分布" : "Today Distribution" : (L.isZhAccess ? "最近7天" : "Last 7 Days"))
+                Text(show24hHeatmap ? (L.isZhAccess ? "今日分布" : "Today Distribution") : L.thisWeek)
                     .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(.primary.opacity(0.4))
                 Spacer()

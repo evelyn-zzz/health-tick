@@ -667,7 +667,7 @@ final class AppState {
         todayDone = db.todayCount()
         currentStreak = db.streakDays(goal: config.dailyGoal)
         maxStreak = db.maxStreakDays(goal: config.dailyGoal)
-        weekData = db.recent7DaysCounts()
+        weekData = db.thisWeekCounts()
         totalCount = db.totalCount()
         todayWorkMinutes = db.todayWorkMinutes() + currentSessionWorkMinutes
         todayBreakMinutes = db.todayBreakMinutes()

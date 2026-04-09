@@ -182,9 +182,9 @@ struct L {
     static var maxStreak: String { isZh ? "最长连续" : "Best Streak" }
     static var weekGoal: String { isZh ? "本周达标" : "This Week" }
     static var monthGoal: String { isZh ? "本月达标" : "This Month" }
-    static var last7Days: String { isZh ? "近 7 天" : "Last 7 Days" }
+    static var thisWeek: String { isZh ? "本周" : "This Week" }
     static func totalTimes(_ n: Int) -> String { isZh ? "共 \(n) 次" : "\(n) total" }
-    static var last30Days: String { isZh ? "近 30 天" : "Last 30 Days" }
+    static var last4Weeks: String { isZh ? "近 4 周" : "Last 4 Weeks" }
     static func goalDays(_ n: Int) -> String { isZh ? "\(n) 天达标" : "\(n) days met" }
     static var less: String { isZh ? "少" : "Less" }
     static var more: String { isZh ? "多" : "More" }
