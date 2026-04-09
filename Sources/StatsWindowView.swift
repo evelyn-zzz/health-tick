@@ -598,19 +598,6 @@ struct DayDetailView: View {
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button {
-                    withAnimation {
-                        // Indirectly close via parent if used as overlay,
-                        // or via dismiss if used as sheet.
-                        // We'll update the state in parent to be safe.
-                        dismiss()
-                    }
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 20))
-                        .foregroundStyle(.secondary.opacity(0.5))
-                }
-                .buttonStyle(.plain)
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
