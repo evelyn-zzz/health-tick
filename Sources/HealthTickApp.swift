@@ -91,7 +91,7 @@ struct HealthTickApp: App {
             StatsWindowView()
                 .environment(state)
         }
-        .defaultSize(width: 780, height: 620)
+        .defaultSize(width: 700, height: 420)
 
         Window(L.onboardingWindow, id: "onboarding") {
             OnboardingView()

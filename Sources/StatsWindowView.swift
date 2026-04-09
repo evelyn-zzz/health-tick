@@ -81,14 +81,13 @@ struct StatsWindowView: View {
                     }
 
                 DayDetailView(date: detail.id)
-                    .frame(width: 440, height: 560)
-                    .background(Color(nsColor: .windowBackgroundColor))
                     .clipShape(RoundedRectangle(cornerRadius: 16))
                     .shadow(color: .black.opacity(0.3), radius: 20, x: 0, y: 10)
                     .overlay(
                         RoundedRectangle(cornerRadius: 16)
                             .stroke(Color.primary.opacity(0.1), lineWidth: 0.5)
                     )
+                    .padding(40)
                     .transition(.scale(scale: 0.95).combined(with: .opacity))
                     .zIndex(1)
             }
@@ -592,18 +591,10 @@ struct DayDetailView: View {
     let date: String
     @Environment(\.dismiss) var dismiss
     private let db = Database.shared
+    
+    @State private var timelineItems: [Database.DaySession] = []
 
     var body: some View {
-        let sessions = db.daySessions(date: date)
-        let records = db.dayRecords(date: date)
-        
-        // Combine sessions and records into a single timeline
-        let timelineItems: [TimelineItem] = {
-            var items: [TimelineItem] = sessions.map { .session($0) }
-            items.append(contentsOf: records.map { .record($0) })
-            return items.sorted { $0.timestamp < $1.timestamp }
-        }()
-        
         VStack(spacing: 0) {
             // Header
             HStack {
@@ -647,12 +638,7 @@ struct DayDetailView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
                         ForEach(timelineItems) { item in
-                            switch item {
-                            case .session(let s):
-                                timelineRow(session: s)
-                            case .record(let r):
-                                recordRow(record: r)
-                            }
+                            timelineRow(session: item)
                         }
                     }
                     .padding(.vertical, 20)
@@ -660,60 +646,19 @@ struct DayDetailView: View {
                 }
             }
         }
-        .frame(minWidth: 440, minHeight: 560)
+        .frame(minWidth: 400, maxWidth: 600, minHeight: 300, maxHeight: 600)
         .background(Color(nsColor: .windowBackgroundColor))
-    }
-
-    enum TimelineItem: Identifiable {
-        case session(Database.DaySession)
-        case record(Database.DayRecord)
-        
-        var id: String {
-            switch self {
-            case .session(let s): return "s-\(s.id)"
-            case .record(let r): return "r-\(r.id)"
-            }
-        }
-        
-        var timestamp: Date {
-            switch self {
-            case .session(let s): return s.start
-            case .record(let r): return r.timestamp
-            }
+        .onAppear {
+            loadData()
         }
     }
 
-    private func recordRow(record: Database.DayRecord) -> some View {
-        HStack(alignment: .top, spacing: 16) {
-            // Time column
-            VStack(alignment: .trailing, spacing: 2) {
-                Text(formatTime(record.timestamp))
-                    .font(.system(size: 11, weight: .medium, design: .rounded))
-                    .foregroundStyle(.tertiary)
-            }
-            .frame(width: 45)
-
-            // Indicator
-            VStack(spacing: 0) {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.green)
-                    .padding(.top, 4)
-                Rectangle()
-                    .fill(Color.primary.opacity(0.1))
-                    .frame(width: 2)
-            }
-
-            // Content
-            VStack(alignment: .leading, spacing: 2) {
-                Text(L.isZhAccess ? "完成打卡" : "Check-in")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.bottom, 24)
-        }
-        .padding(.horizontal, 24)
+    private func loadData() {
+        // Fetch sessions only
+        self.timelineItems = db.daySessions(date: date)
     }
+
+
 
     private func timelineRow(session: Database.DaySession) -> some View {
         HStack(alignment: .top, spacing: 16) {

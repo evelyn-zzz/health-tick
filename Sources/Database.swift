@@ -792,11 +792,12 @@ final class Database {
                 
                 if let start = iso.date(from: workStartStr) {
                     let end = workEndStr.flatMap { iso.date(from: $0) }
+                    let actualMins = end.map { Int($0.timeIntervalSince(start) / 60) } ?? workMinutes
                     result.append(DaySession(
                         type: .work,
                         start: start,
                         end: end,
-                        durationMinutes: workMinutes,
+                        durationMinutes: max(0, actualMins),
                         skipped: false,
                         goal: goal
                     ))

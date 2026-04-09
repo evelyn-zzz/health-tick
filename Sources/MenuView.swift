@@ -91,19 +91,6 @@ private struct MenuHeaderView: View {
                 .background(.green.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
             }
 
-            if state.todaySkipCount >= 3 {
-                HStack(spacing: 6) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: 12))
-                        .foregroundStyle(.orange)
-                    Text(L.skipWarningMenu)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(.orange)
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(.orange.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
-            }
 
             if state.isInQuietHours || state.goalAutoStopped {
                 HStack(spacing: 6) {
@@ -317,7 +304,7 @@ private struct MenuStatsContent: View {
             if let next = state.nextBadge {
                 let hint = L.badgeNext(icon: next.icon, name: next.name, days: next.days - state.currentStreak)
                 HStack(spacing: 0) {
-                    Text("🎯 \(hint.prefix)")
+                    Text(hint.prefix)
                         .font(.caption)
                         .foregroundStyle(.primary.opacity(0.5))
                     Text(hint.badge)

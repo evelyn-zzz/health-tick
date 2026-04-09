@@ -471,7 +471,6 @@ struct L {
     static var dailyGoalReached: String { isZh ? "今日目标已完成！" : "Daily goal reached!" }
 
     // MARK: - Skip Detection
-    static var skipWarningMenu: String { isZh ? "今日多次跳过休息，注意健康" : "Breaks skipped today, take care" }
     static func skipWarningBreak(_ count: Int) -> String {
         isZh ? "今天已跳过 \(count) 次休息，身体需要你的关注" : "You've skipped \(count) breaks today. Your body needs attention"
     }
@@ -515,8 +514,8 @@ struct L {
     // MARK: - Share
     static var share: String { isZh ? "分享" : "Share" }
     static var shareCopied: String { isZh ? "已复制到剪贴板" : "Copied to clipboard" }
-    static var shareGoalReached: String { isZh ? "🎉 今日目标已达成！" : "🎉 Daily Goal Achieved!" }
-    static var shareKeepGoing: String { isZh ? "💪 继续加油中..." : "💪 Keep going..." }
+    static var shareGoalReached: String { isZh ? "今日目标已达成！" : "Daily Goal Achieved!" }
+    static var shareKeepGoing: String { isZh ? "继续加油中..." : "Keep going..." }
     static var shareStreak: String { isZh ? "连续" : "Streak" }
     static var shareMaxStreak: String { isZh ? "最长" : "Best" }
     static var shareTotalBreaks: String { isZh ? "累计" : "Total" }
