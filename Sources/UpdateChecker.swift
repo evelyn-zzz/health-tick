@@ -283,7 +283,6 @@ final class UpdateChecker: ObservableObject {
     func installAndRestart() {
         guard let fileURL = downloadedFileURL else { return }
 
-        let bundleId = Bundle.main.bundleIdentifier ?? "com.evelyn-zzz.healthtick"
         let destApp = Bundle.main.bundlePath
         let dmgPath = fileURL.path
 
