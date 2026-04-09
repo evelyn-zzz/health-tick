@@ -9,7 +9,12 @@ struct StatsWindowView: View {
     @Environment(AppState.self) var state
     @State private var heatmapMode: HeatmapMode = .checkIns
     @State private var selectedBarIndex: Int? = nil
+    @State private var selectedDetailDate: DetailDate? = nil
     private let db = Database.shared
+
+    struct DetailDate: Identifiable {
+        let id: String
+    }
 
     var body: some View {
         TabView {
@@ -40,77 +45,65 @@ struct StatsWindowView: View {
             return max(1, (Calendar.current.dateComponents([.day], from: d, to: Date()).day ?? 0) + 1)
         }()
 
-        return VStack(spacing: 0) {
-            VStack(spacing: 12) {
-                // Top: stat cards — 2 rows of 4
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 8) {
-                    statCard(
-                        value: "\(state.todayDone)/\(goal)",
-                        label: L.todayDone,
-                        icon: "checkmark.circle.fill",
-                        color: .green,
-                        progress: Double(state.todayDone) / Double(max(goal, 1))
-                    )
-                    statCard(value: "\(state.currentStreak)", label: L.currentStreak, icon: "flame.fill", color: .orange)
-                    statCard(value: "\(state.maxStreak)", label: L.maxStreak, icon: "crown.fill", color: .yellow)
-                    statCard(value: "\(state.totalCount)", label: L.isZhAccess ? "累计" : "Total", icon: "sum", color: .cyan)
-                    statCard(value: L.formatWorkTimeShort(state.todayWorkMinutes), label: L.todayWorkTimeLabel, icon: "clock.fill", color: .blue)
-                    statCard(value: "\(wDone)/\(wTotal)", label: L.weekGoal, icon: "calendar", color: .purple)
-                    statCard(value: "\(mDone)/\(mTotal)", label: L.monthGoal, icon: "calendar.badge.checkmark", color: .pink)
-                    statCard(value: "\(bestCount)", label: L.bestDay, icon: "trophy.fill", color: .mint)
-                }
-                .padding(.horizontal, 20)
+        ZStack {
+            VStack(spacing: 0) {
+                VStack(spacing: 12) {
+                    // Top: stat cards — 1 row of 4
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 8) {
+                        statCard(
+                            value: "\(state.todayDone)/\(goal)",
+                            label: L.todayDone,
+                            icon: "checkmark.circle.fill",
+                            color: .green,
+                            progress: Double(state.todayDone) / Double(max(goal, 1))
+                        )
+                        statCard(value: L.formatWorkTimeShort(state.todayWorkMinutes), label: L.todayWorkTimeLabel, icon: "clock.fill", color: .blue)
+                        statCard(value: L.formatWorkTimeShort(state.todayBreakMinutes), label: L.todayBreakTimeLabel, icon: "cup.and.saucer.fill", color: .orange)
+                        statCard(value: "\(wDone)/\(wTotal)", label: L.weekGoal, icon: "calendar", color: .purple)
+                    }
+                    .padding(.horizontal, 20)
 
-                // Middle: week chart + summary side by side
-                HStack(alignment: .top, spacing: 12) {
-                    weekChart
+                    // Bottom: heatmap / work time chart
+                    heatmapSection
                         .padding(.horizontal, 14)
                         .padding(.vertical, 12)
-                        .frame(maxHeight: .infinity)
                         .background(.quaternary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
-
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text(L.isZhAccess ? "概览" : "Overview")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(.secondary)
-
-                        summaryRow(icon: "calendar.badge.clock", label: L.usingDays, value: "\(usingDays)", color: .blue)
-                        summaryRow(icon: "sun.max.fill", label: L.activeDays, value: "\(active)", color: .orange)
-                        summaryRow(icon: "divide", label: L.avgDaily, value: String(format: "%.1f", avgDaily), color: .teal)
-                        summaryRow(icon: "trophy.fill", label: L.bestDay, value: bestDate.isEmpty ? "-" : "\(bestCount)\(longDate(bestDate))", color: .mint)
-                        if state.todaySkipCount > 0 {
-                            summaryRow(icon: "exclamationmark.triangle.fill", label: L.todaySkipped, value: "\(state.todaySkipCount)", color: .orange)
-                        }
-
-                        Spacer(minLength: 0)
-                    }
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 12)
-                    .frame(width: 200)
-                    .frame(maxHeight: .infinity)
-                    .background(.quaternary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+                        .padding(.horizontal, 20)
                 }
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.horizontal, 20)
+                .padding(.top, 12)
 
-                // Bottom: heatmap / work time chart
-                heatmapSection
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 12)
-                    .background(.quaternary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
-                    .padding(.horizontal, 20)
+                Spacer(minLength: 0)
+
+                // Encourage
+                Text(state.encourageText)
+                    .font(.system(size: 13))
+                    .foregroundStyle(.green)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                    .background(.green.opacity(0.04))
             }
-            .padding(.top, 12)
 
-            Spacer(minLength: 0)
+            // Custom Popover Layer
+            if let detail = selectedDetailDate {
+                Color.black.opacity(0.25)
+                    .ignoresSafeArea()
+                    .transition(.opacity)
+                    .onTapGesture {
+                        withAnimation { selectedDetailDate = nil }
+                    }
 
-            // Encourage
-            Text(state.encourageText)
-                .font(.system(size: 13))
-                .foregroundStyle(.green)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
-                .background(.green.opacity(0.04))
+                DayDetailView(date: detail.id)
+                    .frame(width: 440, height: 560)
+                    .background(Color(nsColor: .windowBackgroundColor))
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .shadow(color: .black.opacity(0.3), radius: 20, x: 0, y: 10)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(Color.primary.opacity(0.1), lineWidth: 0.5)
+                    )
+                    .transition(.scale(scale: 0.95).combined(with: .opacity))
+                    .zIndex(1)
+            }
         }
     }
 
@@ -166,63 +159,24 @@ struct StatsWindowView: View {
         .background(.quaternary.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
     }
 
-    // MARK: - Week Chart
-
-    private var weekChart: some View {
-        let data = db.recent7DaysCounts()
-        let goal = state.config.dailyGoal
-        let maxVal = max(goal, data.map(\.1).max() ?? 1)
-
-        return VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text(L.last7Days)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                Spacer()
-                let total = data.reduce(0) { $0 + $1.1 }
-                Text(L.totalTimes(total))
-                    .font(.system(size: 11))
-                    .foregroundStyle(.tertiary)
-            }
-
-            HStack(alignment: .bottom, spacing: 8) {
-                ForEach(Array(data.enumerated()), id: \.offset) { _, item in
-                    VStack(spacing: 4) {
-                        if item.1 > 0 {
-                            Text("\(item.1)")
-                                .font(.system(size: 11, weight: .semibold, design: .rounded))
-                                .foregroundStyle(item.1 >= goal ? .green : .secondary)
-                        } else {
-                            Text(" ").font(.system(size: 11))
-                        }
-
-                        RoundedRectangle(cornerRadius: 5)
-                            .fill(barColor(count: item.1, goal: goal))
-                            .frame(maxWidth: 50)
-                            .frame(height: item.1 == 0 ? 4 : max(14, CGFloat(item.1) / CGFloat(maxVal) * 100))
-
-                        Text(shortDay(item.0))
-                            .font(.system(size: 10))
-                            .foregroundStyle(.tertiary)
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-            }
-            .frame(height: 140)
-        }
-        .frame(maxWidth: .infinity)
+    private func checkWorkDay(_ s: String) -> Bool {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyy-MM-dd"
+        guard let date = fmt.date(from: s) else { return true }
+        let weekday = Calendar.current.component(.weekday, from: date)
+        return state.config.workDays.contains(weekday)
     }
 
-    private func barColor(count: Int, goal: Int) -> Color {
-        if count == 0 { return Color.gray.opacity(0.12) }
-        if count >= goal { return .green }
-        return .green.opacity(0.35)
+    private func heatmapOpacity(_ count: Int) -> Double {
+        if count == 0 { return 0 }
+        let goal = max(1, state.config.dailyGoal)
+        return min(1.0, 0.3 + (Double(count) / Double(goal)) * 0.7)
     }
 
-    private func shortDay(_ s: String) -> String {
-        let p = s.split(separator: "-")
-        guard p.count == 3, let d = Int(p[2]) else { return s }
-        return L.dayLabel(d)
+    private func workTimeOpacity(_ mins: Int) -> Double {
+        if mins == 0 { return 0 }
+        let target = max(1, state.config.workMinutes * state.config.dailyGoal)
+        return min(1.0, 0.3 + (Double(mins) / Double(target)) * 0.7)
     }
 
     // MARK: - Heatmap
@@ -258,30 +212,34 @@ struct StatsWindowView: View {
         .frame(maxWidth: .infinity)
     }
 
-    // MARK: - Check-in Heatmap
-
     private func checkInHeatmap(data: [(String, Int)], goal: Int) -> some View {
         let cols = 10
         return VStack(spacing: 4) {
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: cols), spacing: 4) {
                 ForEach(Array(data.enumerated()), id: \.offset) { _, item in
-                    let ratio = Double(item.1) / Double(max(goal, 1))
+                    let isWorkDay = checkWorkDay(item.0)
+                    let baseColor: Color = isWorkDay ? .primary.opacity(0.08) : .primary.opacity(0.03)
+                    
                     RoundedRectangle(cornerRadius: 4)
-                        .fill(heatColor(ratio: ratio))
+                        .fill(item.1 > 0 ? Color.green.opacity(heatmapOpacity(item.1)) : baseColor)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 4)
+                                .stroke(isWorkDay ? Color.clear : Color.primary.opacity(0.1), lineWidth: 0.5)
+                        )
                         .aspectRatio(1, contentMode: .fit)
                         .overlay(
                             VStack(spacing: 1) {
                                 Text(heatDay(item.0))
                                     .font(.system(size: 10))
                                     .foregroundStyle(item.1 > 0 ? .white.opacity(0.7) : .primary.opacity(0.2))
-                                if item.1 > 0 {
-                                    Text("\(item.1)")
-                                        .font(.system(size: 9, weight: .semibold, design: .rounded))
-                                        .foregroundStyle(.white.opacity(0.8))
-                                }
                             }
                         )
-                        .help("\(shortDate(item.0)): \(item.1)")
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                selectedDetailDate = DetailDate(id: item.0)
+                            }
+                        }
                 }
             }
 
@@ -289,7 +247,7 @@ struct StatsWindowView: View {
                 Text(L.less).font(.system(size: 10)).foregroundStyle(.primary.opacity(0.45))
                 ForEach([0.0, 0.25, 0.5, 0.75, 1.0], id: \.self) { r in
                     RoundedRectangle(cornerRadius: 2)
-                        .fill(heatColor(ratio: r))
+                        .fill(itemColor(ratio: r))
                         .frame(width: 14, height: 14)
                 }
                 Text(L.more).font(.system(size: 10)).foregroundStyle(.primary.opacity(0.45))
@@ -298,11 +256,13 @@ struct StatsWindowView: View {
         }
     }
 
-    // MARK: - Work Time 30-Day Bar Chart
+    private func itemColor(ratio: Double) -> Color {
+        if ratio == 0 { return .primary.opacity(0.05) }
+        return .green.opacity(0.3 + ratio * 0.7)
+    }
 
     private func workTimeBarChart(data: [(String, Int)]) -> some View {
         let maxMinutes = max(data.map(\.1).max() ?? 1, 1)
-        let totalMin = data.reduce(0) { $0 + $1.1 }
 
         return VStack(spacing: 6) {
             HStack {
@@ -343,6 +303,9 @@ struct StatsWindowView: View {
                         .frame(maxWidth: .infinity)
                         .contentShape(Rectangle())
                         .onTapGesture {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                selectedDetailDate = DetailDate(id: item.0)
+                            }
                             withAnimation(.easeInOut(duration: 0.12)) {
                                 selectedBarIndex = selectedBarIndex == idx ? nil : idx
                             }
@@ -631,5 +594,201 @@ struct StatsWindowView: View {
         .background(gold.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
         .padding(.horizontal, 28)
         .padding(.bottom, 12)
+    }
+}
+
+// MARK: - Day Detail View
+
+struct DayDetailView: View {
+    let date: String
+    @Environment(\.dismiss) var dismiss
+    private let db = Database.shared
+
+    var body: some View {
+        let sessions = db.daySessions(date: date)
+        let records = db.dayRecords(date: date)
+        
+        // Combine sessions and records into a single timeline
+        let timelineItems: [TimelineItem] = {
+            var items: [TimelineItem] = sessions.map { .session($0) }
+            items.append(contentsOf: records.map { .record($0) })
+            return items.sorted { $0.timestamp < $1.timestamp }
+        }()
+        
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(formatFullDate(date))
+                        .font(.system(size: 16, weight: .bold))
+                    Text(L.isZhAccess ? "当日活动记录" : "Daily Activity Log")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button {
+                    withAnimation {
+                        // Indirectly close via parent if used as overlay,
+                        // or via dismiss if used as sheet.
+                        // We'll update the state in parent to be safe.
+                        dismiss()
+                    }
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 20))
+                        .foregroundStyle(.secondary.opacity(0.5))
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+            .background(.ultraThinMaterial)
+
+            if timelineItems.isEmpty {
+                VStack(spacing: 12) {
+                    Image(systemName: "calendar.badge.exclamationmark")
+                        .font(.system(size: 40))
+                        .foregroundStyle(.tertiary)
+                    Text(L.isZhAccess ? "该日无记录" : "No records for this day")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(timelineItems) { item in
+                            switch item {
+                            case .session(let s):
+                                timelineRow(session: s)
+                            case .record(let r):
+                                recordRow(record: r)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 20)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        }
+        .frame(minWidth: 440, minHeight: 560)
+        .background(Color(nsColor: .windowBackgroundColor))
+    }
+
+    enum TimelineItem: Identifiable {
+        case session(Database.DaySession)
+        case record(Database.DayRecord)
+        
+        var id: String {
+            switch self {
+            case .session(let s): return "s-\(s.id)"
+            case .record(let r): return "r-\(r.id)"
+            }
+        }
+        
+        var timestamp: Date {
+            switch self {
+            case .session(let s): return s.start
+            case .record(let r): return r.timestamp
+            }
+        }
+    }
+
+    private func recordRow(record: Database.DayRecord) -> some View {
+        HStack(alignment: .top, spacing: 16) {
+            // Time column
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(formatTime(record.timestamp))
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundStyle(.tertiary)
+            }
+            .frame(width: 45)
+
+            // Indicator
+            VStack(spacing: 0) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.green)
+                    .padding(.top, 4)
+                Rectangle()
+                    .fill(Color.primary.opacity(0.1))
+                    .frame(width: 2)
+            }
+
+            // Content
+            VStack(alignment: .leading, spacing: 2) {
+                Text(L.isZhAccess ? "完成打卡" : "Check-in")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.bottom, 24)
+        }
+        .padding(.horizontal, 24)
+    }
+
+    private func timelineRow(session: Database.DaySession) -> some View {
+        HStack(alignment: .top, spacing: 16) {
+            // Time column
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(formatTime(session.start))
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                if let end = session.end {
+                    Text(formatTime(end))
+                        .font(.system(size: 10))
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .frame(width: 45)
+
+            // Indicator
+            VStack(spacing: 0) {
+                Circle()
+                    .fill(session.type == .work ? Color.green : Color.orange)
+                    .frame(width: 8, height: 8)
+                    .padding(.top, 4)
+                Rectangle()
+                    .fill(Color.primary.opacity(0.1))
+                    .frame(width: 2)
+            }
+
+            // Content
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text(session.type == .work ? (L.isZhAccess ? "专注工作" : "Deep Work") : (L.isZhAccess ? "休息一下" : "Break Time"))
+                        .font(.system(size: 13, weight: .bold))
+                    Spacer()
+                    if session.type == .work {
+                        Text("\(session.durationMinutes)m")
+                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.green.opacity(0.1), in: RoundedRectangle(cornerRadius: 4))
+                            .foregroundStyle(.green)
+                    } else if session.skipped {
+                        Text(L.isZhAccess ? "已跳过" : "Skipped")
+                            .font(.system(size: 10))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.red.opacity(0.1), in: RoundedRectangle(cornerRadius: 4))
+                            .foregroundStyle(.red)
+                    }
+                }
+                
+            }
+            .padding(.bottom, 24)
+        }
+        .padding(.horizontal, 24)
+    }
+
+    private func formatTime(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        return f.string(from: date)
+    }
+
+    private func formatFullDate(_ s: String) -> String {
+        let p = s.split(separator: "-")
+        guard p.count == 3, let m = Int(p[1]), let d = Int(p[2]) else { return s }
+        return L.isZhAccess ? "\(m)月\(d)日" : "\(m)/\(d)"
     }
 }

@@ -482,7 +482,8 @@ struct L {
 
     // MARK: - Work Time
     static var workTimeLabel: String { isZh ? "工时" : "Work" }
-    static var todayWorkTimeLabel: String { isZh ? "今日工时" : "Today Work" }
+    static var todayWorkTimeLabel: String { isZh ? "今日工作" : "Today Work" }
+    static var todayBreakTimeLabel: String { isZh ? "今日休息" : "Today Break" }
     static var todayWorkedPrefix: String { isZh ? "今日已工作" : "Worked today" }
     static var checkInCountLabel: String { isZh ? "打卡次数" : "Check-ins" }
     static var workDurationLabel: String { isZh ? "工作时长" : "Work Time" }

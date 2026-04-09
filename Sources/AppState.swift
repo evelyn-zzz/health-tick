@@ -267,6 +267,7 @@ final class AppState {
     var weekData: [(String, Int)] = []
     var totalCount: Int = 0
     var todayWorkMinutes: Int = 0
+    var todayBreakMinutes: Int = 0
     var weekWorkData: [(String, Int)] = []
     var isInQuietHours: Bool = false
 
@@ -437,6 +438,7 @@ final class AppState {
         let nonSkipped = activeReasons.subtracting(skippedQuietReasons)
         if !nonSkipped.isEmpty {
             if !isInQuietHours {
+                print("[HealthTick] startWork: quiet hours active \(nonSkipped), entering quiet mode")
                 isInQuietHours = true
                 autoQuietPaused = true
                 startQuietCountdown()
@@ -444,6 +446,7 @@ final class AppState {
             return
         }
 
+        print("[HealthTick] startWork: starting \(config.workMinutes)min session")
         phase = .working
         currentSessionWorkConfig = config.workMinutes
         targetTime = Date().addingTimeInterval(Double(config.workMinutes * 60))
@@ -487,6 +490,7 @@ final class AppState {
     // MARK: - Work Done -> Alert
 
     private func onWorkDone() {
+        print("[HealthTick] onWorkDone: work session ended, showing break reminder")
         currentReminder = config.reminders.randomElement() ?? L.defaultBreakReminder
         playSound()
 
@@ -511,6 +515,11 @@ final class AppState {
     // MARK: - Break
 
     private func startBreak() {
+        if let alertStart = alertingStartDate {
+            let alertingSecs = Int(Date().timeIntervalSince(alertStart))
+            let alertingMins = alertingSecs / 60
+            print("[HealthTick] startBreak: alerting waited \(alertingSecs)s (\(alertingMins)min), total work = \(currentSessionWorkConfig + alertingMins)min")
+        }
         phase = .breaking
         timer?.invalidate()  // Stop work timer; overlay manager handles break countdown
         alertingStartDate = nil
@@ -538,6 +547,8 @@ final class AppState {
     }
 
     private func onBreakDone() {
+        let actualSeconds: Int? = breakStartDate.map { Int(Date().timeIntervalSince($0)) }
+        print("[HealthTick] onBreakDone: break completed, actual=\(actualSeconds.map{"\($0)s"} ?? "nil"), todayDone will be \(todayDone + 1)")
         phase = .waiting
         remainingSeconds = 0
         breakWarning = ""
@@ -546,12 +557,6 @@ final class AppState {
             overlayManager.pinForAlert()
         }
 
-        let actualSeconds: Int?
-        if let start = breakStartDate {
-            actualSeconds = Int(Date().timeIntervalSince(start))
-        } else {
-            actualSeconds = nil
-        }
         if let sid = currentSessionId {
             db.endSessionBreak(sessionId: sid, actualSeconds: actualSeconds, skipped: false)
         }
@@ -562,6 +567,7 @@ final class AppState {
         let oldTotal = totalCount
         db.addRecord()
         refreshStats()
+        print("[HealthTick] onBreakDone: record added, todayDone=\(todayDone), totalCount=\(totalCount), streak=\(currentStreak)")
         pendingBadge = detectNewBadge(oldStreak: oldStreak, oldTotal: oldTotal)
     }
 
@@ -653,6 +659,7 @@ final class AppState {
         weekData = db.recent7DaysCounts()
         totalCount = db.totalCount()
         todayWorkMinutes = db.todayWorkMinutes() + currentSessionWorkMinutes
+        todayBreakMinutes = db.todayBreakMinutes()
         weekWorkData = db.recent7DaysWorkMinutes()
         todaySkipCount = db.todaySkipCount()
         // Add current session's contribution to today's entry in week data
@@ -1053,6 +1060,7 @@ final class AppState {
         // session can complete and record the break properly.
         let midCycle = phase == .working || phase == .alerting || phase == .breaking || phase == .waiting
         if shouldPause && !isInQuietHours && midCycle {
+            print("[HealthTick] checkQuietHours: quiet reasons \(nonSkippedReasons) active but mid-cycle (\(phase)), deferring")
             return
         }
 

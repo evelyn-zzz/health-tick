@@ -481,6 +481,27 @@ final class Database {
         return total
     }
 
+    func breakMinutesForDate(_ date: String) -> Int {
+        var stmt: OpaquePointer?
+        let sql = "SELECT break_start, break_end FROM sessions WHERE date = '\(date)' AND break_end IS NOT NULL"
+        guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return 0 }
+        defer { sqlite3_finalize(stmt) }
+        let iso = ISO8601DateFormatter()
+        var totalSeconds = 0
+        while sqlite3_step(stmt) == SQLITE_ROW {
+            let startStr = String(cString: sqlite3_column_text(stmt, 0))
+            guard let start = iso.date(from: startStr) else { continue }
+            let endStr = String(cString: sqlite3_column_text(stmt, 1))
+            guard let end = iso.date(from: endStr) else { continue }
+            totalSeconds += max(0, Int(end.timeIntervalSince(start)))
+        }
+        return totalSeconds / 60
+    }
+
+    func todayBreakMinutes() -> Int {
+        breakMinutesForDate(Self.todayString())
+    }
+
     func recent7DaysWorkMinutes() -> [(String, Int)] {
         rangeWorkMinutes(days: 7)
     }
@@ -731,6 +752,95 @@ final class Database {
 
     static func todayString() -> String {
         dateFmt().string(from: Date())
+    }
+
+    // MARK: - Daily Detail
+
+    struct DaySession: Identifiable {
+        let id = UUID()
+        let type: SessionType
+        let start: Date
+        let end: Date?
+        let durationMinutes: Int
+        let skipped: Bool
+        let goal: Int
+
+        enum SessionType {
+            case work
+            case `break`
+        }
+    }
+
+    func daySessions(date: String) -> [DaySession] {
+        var result: [DaySession] = []
+        var stmt: OpaquePointer?
+        let sql = "SELECT work_start, work_end, work_minutes, break_start, break_end, break_actual_seconds, skipped, daily_goal FROM sessions WHERE date = '\(date)' ORDER BY work_start ASC"
+        
+        let iso = ISO8601DateFormatter()
+        
+        if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                let workStartStr = String(cString: sqlite3_column_text(stmt, 0))
+                let workEndStr = sqlite3_column_type(stmt, 1) != SQLITE_NULL ? String(cString: sqlite3_column_text(stmt, 1)) : nil
+                let workMinutes = Int(sqlite3_column_int(stmt, 2))
+                
+                let breakStartStr = sqlite3_column_type(stmt, 3) != SQLITE_NULL ? String(cString: sqlite3_column_text(stmt, 3)) : nil
+                let breakEndStr = sqlite3_column_type(stmt, 4) != SQLITE_NULL ? String(cString: sqlite3_column_text(stmt, 4)) : nil
+                let breakActualSecs = sqlite3_column_type(stmt, 5) != SQLITE_NULL ? Int(sqlite3_column_int(stmt, 5)) : nil
+                let skipped = sqlite3_column_int(stmt, 6) == 1
+                let goal = Int(sqlite3_column_int(stmt, 7))
+                
+                if let start = iso.date(from: workStartStr) {
+                    let end = workEndStr.flatMap { iso.date(from: $0) }
+                    result.append(DaySession(
+                        type: .work,
+                        start: start,
+                        end: end,
+                        durationMinutes: workMinutes,
+                        skipped: false,
+                        goal: goal
+                    ))
+                }
+                
+                if let bStartStr = breakStartStr, let start = iso.date(from: bStartStr) {
+                    let end = breakEndStr.flatMap { iso.date(from: $0) }
+                    result.append(DaySession(
+                        type: .break,
+                        start: start,
+                        end: end,
+                        durationMinutes: (breakActualSecs ?? 0) / 60,
+                        skipped: skipped,
+                        goal: goal
+                    ))
+                }
+            }
+        }
+        sqlite3_finalize(stmt)
+        return result
+    }
+
+    struct DayRecord: Identifiable {
+        let id: Int
+        let timestamp: Date
+    }
+
+    func dayRecords(date: String) -> [DayRecord] {
+        var result: [DayRecord] = []
+        var stmt: OpaquePointer?
+        let sql = "SELECT id, timestamp FROM records WHERE date = '\(date)' ORDER BY timestamp ASC"
+        let iso = ISO8601DateFormatter()
+        
+        if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
+            while sqlite3_step(stmt) == SQLITE_ROW {
+                let id = Int(sqlite3_column_int(stmt, 0))
+                let tsStr = String(cString: sqlite3_column_text(stmt, 1))
+                if let ts = iso.date(from: tsStr) {
+                    result.append(DayRecord(id: id, timestamp: ts))
+                }
+            }
+        }
+        sqlite3_finalize(stmt)
+        return result
     }
 
     static func dateFmt() -> DateFormatter {
