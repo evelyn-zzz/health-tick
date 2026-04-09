@@ -2,19 +2,19 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleExecutable</key>
-    <string>HealthTick</string>
-    <key>LSUIElement</key>
-    <true/>
-    <key>CFBundleIdentifier</key>
-    <string>com.evelyn-zzz.healthtick</string>
-    <key>CFBundleName</key>
-    <string>HealthTick</string>
-    <key>CFBundleIconFile</key>
-    <string>AppIcon</string>
-    <key>CFBundleShortVersionString</key>
-    <string>1.6.12</string>
-    <key>CFBundleVersion</key>
-    <string>64</string>
+	<key>CFBundleExecutable</key>
+	<string>HealthTick</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.evelyn-zzz.healthtick</string>
+	<key>CFBundleName</key>
+	<string>HealthTick</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.6.13</string>
+	<key>CFBundleVersion</key>
+	<string>65</string>
+	<key>LSUIElement</key>
+	<true/>
 </dict>
 </plist>
