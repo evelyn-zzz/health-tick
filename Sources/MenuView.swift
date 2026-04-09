@@ -210,9 +210,9 @@ private struct MenuTimerCircle: View {
 
 private struct MenuStatsContent: View {
     @Environment(AppState.self) var state
+    @State private var show24hHeatmap = false
 
     var body: some View {
-
         Group {
             // Today progress
             HStack(spacing: 16) {
@@ -281,23 +281,56 @@ private struct MenuStatsContent: View {
                 .help(L.share)
             }
 
-            // 7-day pixels
-            HStack(spacing: 4) {
-                ForEach(Array(state.weekData.enumerated()), id: \.offset) { _, item in
-                    VStack(spacing: 3) {
-                        RoundedRectangle(cornerRadius: 3)
-                            .fill(menuPixelColor(count: item.1, goal: state.config.dailyGoal))
-                            .frame(width: 22, height: 22)
-                            .overlay(
-                                Text("\(item.1)")
-                                    .font(.system(size: 9, weight: .medium, design: .monospaced))
-                                    .foregroundStyle(item.1 > 0 ? .white : .clear)
-                            )
-                        Text(menuShortDay(item.0))
-                            .font(.system(size: 8))
-                            .foregroundStyle(.primary.opacity(0.45))
+            // Toggle for 7-day vs 24h
+            HStack {
+                Text(show24hHeatmap ? L.isZhAccess ? "今日分布" : "Today Distribution" : (L.isZhAccess ? "最近7天" : "Last 7 Days"))
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(.primary.opacity(0.4))
+                Spacer()
+                Button {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        show24hHeatmap.toggle()
+                    }
+                } label: {
+                    Image(systemName: "arrow.left.and.right.circle")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.primary.opacity(0.3))
+                }
+                .buttonStyle(.plain)
+                .handCursor()
+            }
+            .padding(.top, 4)
+
+            if show24hHeatmap {
+                Menu24hHeatmapView()
+                    .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity),
+                                          removal: .move(edge: .leading).combined(with: .opacity)))
+            } else {
+                // 7-day pixels
+                HStack(spacing: 4) {
+                    ForEach(Array(state.weekData.enumerated()), id: \.offset) { _, item in
+                        VStack(spacing: 3) {
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(menuPixelColor(count: item.1, goal: state.config.dailyGoal))
+                                .frame(width: 22, height: 22)
+                                .overlay(
+                                    Text("\(item.1)")
+                                        .font(.system(size: 9, weight: .medium, design: .monospaced))
+                                        .foregroundStyle(item.1 > 0 ? .white : .clear)
+                                )
+                                .onTapGesture {
+                                    state.pendingDetailDate = item.0
+                                    openWindow(id: "stats")
+                                    menuBringToFront()
+                                }
+                            Text(menuShortDay(item.0))
+                                .font(.system(size: 8))
+                                .foregroundStyle(.primary.opacity(0.45))
+                        }
                     }
                 }
+                .transition(.asymmetric(insertion: .move(edge: .leading).combined(with: .opacity),
+                                      removal: .move(edge: .trailing).combined(with: .opacity)))
             }
 
             // Badge hint — prefer next goal, fallback to earned badge
@@ -470,8 +503,47 @@ private func menuPixelColor(count: Int, goal: Int) -> Color {
     return .green.opacity(0.3)
 }
 
-private func menuShortDay(_ dateStr: String) -> String {
-    let parts = dateStr.split(separator: "-")
-    guard parts.count == 3, let d = Int(parts[2]) else { return "" }
-    return "\(d)"
+private struct Menu24hHeatmapView: View {
+    @Environment(AppState.self) var state
+    @Environment(\.openWindow) private var openWindow
+    
+    var body: some View {
+        let today = Database.todayString()
+        let blocks = Database.shared.day10MinActivity(date: today)
+        
+        VStack(spacing: 4) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 1.5), count: 18), spacing: 2) {
+                ForEach(0..<144, id: \.self) { i in
+                    let status = blocks[i]
+                    RoundedRectangle(cornerRadius: 1.5)
+                        .fill(colorForStatus(status))
+                        .frame(height: 10)
+                }
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                state.pendingDetailDate = today
+                openWindow(id: "stats")
+                menuBringToFront()
+            }
+            
+            HStack {
+                Text("00:00")
+                Spacer()
+                Text("12:00")
+                Spacer()
+                Text("23:50")
+            }
+            .font(.system(size: 7))
+            .foregroundStyle(.tertiary)
+        }
+    }
+    
+    private func colorForStatus(_ s: Database.ActivityType) -> Color {
+        switch s {
+        case .none: return .gray.opacity(0.12)
+        case .work: return .green
+        case .break: return .orange
+        }
+    }
 }

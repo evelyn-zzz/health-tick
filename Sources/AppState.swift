@@ -283,6 +283,7 @@ final class AppState {
     var todaySkipCount: Int = 0
     var quietRemainingSeconds: Int = 0
     var completedCycles: Int = 0
+    var pendingDetailDate: String? // Set this to jump to a specific day in stats window
 
     private var currentSessionId: Int64?
     private var currentSessionWorkConfig: Int = 0  // work_minutes at session creation
@@ -348,7 +349,13 @@ final class AppState {
             MainActor.assumeIsolated {
                 guard let self else { return }
                 if let sid = self.currentSessionId {
-                    self.db.endWork(sessionId: sid)
+                    if self.phase == .breaking || self.phase == .waiting {
+                        let actualSeconds = self.breakStartDate.map { Int(Date().timeIntervalSince($0)) }
+                        self.db.endSessionBreak(sessionId: sid, actualSeconds: actualSeconds, skipped: false)
+                        self.db.addRecord()
+                    } else {
+                        self.db.endWork(sessionId: sid)
+                    }
                     self.currentSessionId = nil
                 }
                 self.saveTimerState()
@@ -547,8 +554,7 @@ final class AppState {
     }
 
     private func onBreakDone() {
-        let actualSeconds: Int? = breakStartDate.map { Int(Date().timeIntervalSince($0)) }
-        print("[HealthTick] onBreakDone: break completed, actual=\(actualSeconds.map{"\($0)s"} ?? "nil"), todayDone will be \(todayDone + 1)")
+        print("[HealthTick] onBreakDone: break timer reached zero, entering waiting phase")
         phase = .waiting
         remainingSeconds = 0
         breakWarning = ""
@@ -556,26 +562,31 @@ final class AppState {
         if config.breakPosition == .menuWindow {
             overlayManager.pinForAlert()
         }
-
-        if let sid = currentSessionId {
-            db.endSessionBreak(sessionId: sid, actualSeconds: actualSeconds, skipped: false)
-        }
-
-        completedCycles += 1
-
-        let oldStreak = maxStreak
-        let oldTotal = totalCount
-        db.addRecord()
-        refreshStats()
-        print("[HealthTick] onBreakDone: record added, todayDone=\(todayDone), totalCount=\(totalCount), streak=\(currentStreak)")
-        pendingBadge = detectNewBadge(oldStreak: oldStreak, oldTotal: oldTotal)
+        
+        // Note: we defer db.endSessionBreak and db.addRecord until confirmReturn
+        // to ensure the full period until the user returns to work is captured.
     }
 
     private var pendingBadge: Badge?
 
     func confirmReturn() {
         overlayManager.hideAll()
-        let badge = pendingBadge
+        
+        // Finalize the break recording now that the user is actually returning
+        let actualSeconds: Int? = breakStartDate.map { Int(Date().timeIntervalSince($0)) }
+        print("[HealthTick] confirmReturn: break finished, total duration=\(actualSeconds.map{"\($0)s"} ?? "nil")")
+        
+        if let sid = currentSessionId {
+            db.endSessionBreak(sessionId: sid, actualSeconds: actualSeconds, skipped: false)
+        }
+        
+        completedCycles += 1
+        let oldStreak = maxStreak
+        let oldTotal = totalCount
+        db.addRecord()
+        refreshStats()
+        
+        let badge = detectNewBadge(oldStreak: oldStreak, oldTotal: oldTotal)
         pendingBadge = nil
 
         if config.autoPauseOnGoal && todayDone >= config.dailyGoal {

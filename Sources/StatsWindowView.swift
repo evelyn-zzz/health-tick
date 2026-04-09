@@ -23,6 +23,18 @@ struct StatsWindowView: View {
             badgesTab
                 .tabItem { Label(L.tabBadges, systemImage: "medal.fill") }
         }
+        .onAppear {
+            if let pending = state.pendingDetailDate {
+                selectedDetailDate = DetailDate(id: pending)
+                state.pendingDetailDate = nil
+            }
+        }
+        .onChange(of: state.pendingDetailDate) { _, newValue in
+            if let pending = newValue {
+                selectedDetailDate = DetailDate(id: pending)
+                state.pendingDetailDate = nil
+            }
+        }
     }
 
     // =========================================================================
@@ -637,8 +649,9 @@ struct DayDetailView: View {
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
-                        ForEach(timelineItems) { item in
-                            timelineRow(session: item)
+                        ForEach(Array(timelineItems.enumerated()), id: \.1.id) { index, item in
+                            let prevEnd = index > 0 ? timelineItems[index - 1].end : nil
+                            timelineRow(session: item, prevEnd: prevEnd)
                         }
                     }
                     .padding(.vertical, 20)
@@ -646,7 +659,7 @@ struct DayDetailView: View {
                 }
             }
         }
-        .frame(minWidth: 400, maxWidth: 600, minHeight: 300, maxHeight: 600)
+        .frame(minWidth: 320, maxWidth: 450, minHeight: 300, maxHeight: 600)
         .background(Color(nsColor: .windowBackgroundColor))
         .onAppear {
             loadData()
@@ -660,16 +673,22 @@ struct DayDetailView: View {
 
 
 
-    private func timelineRow(session: Database.DaySession) -> some View {
+    private func timelineRow(session: Database.DaySession, prevEnd: Date?) -> some View {
         let themeColor = session.type == .work ? Color.green : Color.orange
+        let isSameTimeAsPrev = prevEnd != nil && abs(session.start.timeIntervalSince(prevEnd!)) < 60
         
         return HStack(alignment: .top, spacing: 14) {
             // Time column
             VStack(alignment: .trailing, spacing: 12) {
-                Text(formatTime(session.start))
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                if !isSameTimeAsPrev {
+                    Text(formatTime(session.start))
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                } else {
+                    Spacer().frame(height: 15)
+                }
                 
                 if let end = session.end {
+                    Spacer(minLength: 0)
                     Text(formatTime(end))
                         .font(.system(size: 11, weight: .medium, design: .rounded))
                         .foregroundStyle(.secondary)
@@ -685,10 +704,13 @@ struct DayDetailView: View {
                     .frame(width: 10, height: 10)
                 
                 if session.end != nil {
+                    let durationScale = CGFloat(min(max(session.durationMinutes, 1), 60)) / 60.0
+                    let lineHeight = 30 + (80 * durationScale)
+                    
                     Rectangle()
                         .fill(themeColor.opacity(0.3))
                         .frame(width: 4)
-                        .frame(minHeight: 30)
+                        .frame(height: lineHeight)
                         .padding(.vertical, 2)
                     
                     Circle()
@@ -718,7 +740,7 @@ struct DayDetailView: View {
                     
                     Spacer()
                     
-                    // Duration badge - now shown for both types
+                    // Duration badge
                     if session.durationMinutes > 0 || (session.type == .break && !session.skipped) {
                         let displayDuration = max(1, session.durationMinutes)
                         Text("\(displayDuration)m")

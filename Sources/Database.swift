@@ -845,6 +845,37 @@ final class Database {
         return result
     }
 
+    enum ActivityType: Int {
+        case none = 0
+        case work = 1
+        case `break` = 2
+    }
+
+    func day10MinActivity(date: String) -> [ActivityType] {
+        var blocks = Array(repeating: ActivityType.none, count: 144)
+        let sessions = daySessions(date: date)
+        
+        let cal = Calendar.current
+        for s in sessions {
+            guard let end = s.end else { continue }
+            let startHour = cal.component(.hour, from: s.start)
+            let startMin = cal.component(.minute, from: s.start)
+            let endHour = cal.component(.hour, from: end)
+            let endMin = cal.component(.minute, from: end)
+            
+            let startIndex = (startHour * 6) + (startMin / 10)
+            let endIndex = (endHour * 6) + (endMin / 10)
+            
+            let type: ActivityType = s.type == .work ? .work : .break
+            for i in max(0, startIndex)...min(143, endIndex) {
+                // Work overrides break if they overlap in a 10min block
+                if blocks[i] == .work && type == .break { continue }
+                blocks[i] = type
+            }
+        }
+        return blocks
+    }
+
     static func dateFmt() -> DateFormatter {
         let f = DateFormatter()
         f.dateFormat = "yyyy-MM-dd"
