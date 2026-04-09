@@ -32,20 +32,8 @@ struct StatsWindowView: View {
     private var statsTab: some View {
         let goal = state.config.dailyGoal
         let (wDone, wTotal) = db.weekCompletionRate(goal: goal)
-        let (mDone, mTotal) = db.monthCompletionRate(goal: goal)
-        let active = db.activeDays()
-        let (bestDate, bestCount) = db.bestDayCount()
-        let avgDaily = active > 0 ? Double(state.totalCount) / Double(active) : 0
-        let firstDate = db.firstRecordDate()
-        let usingDays: Int = {
-            guard let first = firstDate else { return 0 }
-            let fmt = DateFormatter()
-            fmt.dateFormat = "yyyy-MM-dd"
-            guard let d = fmt.date(from: first) else { return 0 }
-            return max(1, (Calendar.current.dateComponents([.day], from: d, to: Date()).day ?? 0) + 1)
-        }()
-
-        ZStack {
+        
+        return ZStack {
             VStack(spacing: 0) {
                 VStack(spacing: 12) {
                     // Top: stat cards — 1 row of 4
@@ -278,7 +266,8 @@ struct StatsWindowView: View {
                     Text(L.isZhAccess ? "合计" : "Total")
                         .font(.system(size: 11))
                         .foregroundStyle(.tertiary)
-                    Text(L.formatWorkTime(totalMin))
+                    let totalSeconds = data.reduce(0) { $0 + $1.1 }
+                    Text(L.formatWorkTime(totalSeconds))
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(.blue)
                 }
