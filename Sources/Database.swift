@@ -7,7 +7,7 @@ final class Database {
     private let dbPath: String
 
     private init() {
-        let bundleId = Bundle.main.bundleIdentifier ?? "com.lifedever.healthtick"
+        let bundleId = Bundle.main.bundleIdentifier ?? "com.evelyn-zzz.healthtick"
         let suffix = bundleId.hasSuffix(".dev") ? "-dev" : ""
         let dir = NSHomeDirectory() + "/.health-tick\(suffix)"
         try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)

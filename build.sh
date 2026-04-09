@@ -31,7 +31,7 @@ cat > "$HOME/Applications/${APP_NAME}.app/Contents/Info.plist" <<EOF
     <key>LSUIElement</key>
     <true/>
     <key>CFBundleIdentifier</key>
-    <string>com.lifedever.healthtick.dev</string>
+    <string>com.evelyn-zzz.healthtick.dev</string>
     <key>CFBundleName</key>
     <string>HealthTick Dev</string>
     <key>CFBundleIconFile</key>

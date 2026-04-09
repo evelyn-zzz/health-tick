@@ -1030,7 +1030,7 @@ struct AboutTab: View {
                     .foregroundStyle(.quaternary)
 
                 Button {
-                    if let url = URL(string: "https://github.com/lifedever/health-tick-release") {
+                    if let url = URL(string: "https://github.com/evelyn-zzz/health-tick") {
                         NSWorkspace.shared.open(url)
                     }
                 } label: {
