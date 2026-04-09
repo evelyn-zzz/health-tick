@@ -793,7 +793,7 @@ struct Daily24hHeatmapView: View {
                         }
                     }
                     
-                    ForEach(0..<24, id: \.self) { hour in
+                    ForEach(8...23, id: \.self) { hour in
                         HStack(spacing: 12) {
                             Text(String(format: "%02d:00", hour))
                                 .font(.system(size: 11, weight: .medium, design: .monospaced))

@@ -70,7 +70,7 @@ struct BreakCardView: View {
                 .padding(.top, 10)
         }
 
-        HStack(spacing: 12) {
+        VStack(spacing: 8) {
             Button {
                 state.confirmBreak()
             } label: {
@@ -203,7 +203,7 @@ struct BreakCardView: View {
             .padding(.horizontal, 20)
             .padding(.top, 14)
 
-        HStack(spacing: 12) {
+        VStack(spacing: 8) {
             Button {
                 state.confirmReturn()
             } label: {
@@ -257,14 +257,14 @@ struct BreakCardView: View {
                 .multilineTextAlignment(.center)
         }
 
-        HStack(spacing: 20) {
+        VStack(spacing: 12) {
             Button {
                 state.confirmBreak()
             } label: {
                 Text(L.alertConfirmBreak)
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(.white)
-                    .frame(width: 200)
+                    .frame(width: 280)
                     .padding(.vertical, 12)
                     .background(.orange.gradient, in: RoundedRectangle(cornerRadius: 10))
             }
@@ -274,11 +274,11 @@ struct BreakCardView: View {
                 state.snoozeWork()
             } label: {
                 Text(L.alertWorkMore)
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.8))
-                    .frame(width: 200)
-                    .padding(.vertical, 12)
-                    .background(Color.white.opacity(0.15), in: RoundedRectangle(cornerRadius: 10))
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.7))
+                    .frame(width: 280)
+                    .padding(.vertical, 10)
+                    .background(Color.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
             }
             .buttonStyle(.borderless)
         }
@@ -375,14 +375,14 @@ struct BreakCardView: View {
             .foregroundStyle(.white.opacity(0.7))
             .multilineTextAlignment(.center)
 
-        HStack(spacing: 20) {
+        VStack(spacing: 12) {
             Button {
                 state.confirmReturn()
             } label: {
                 Text(L.alertImBack)
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(.white)
-                    .frame(width: 200)
+                    .frame(width: 280)
                     .padding(.vertical, 12)
                     .background(.green.gradient, in: RoundedRectangle(cornerRadius: 10))
             }
@@ -392,11 +392,11 @@ struct BreakCardView: View {
                 state.snoozeBreak()
             } label: {
                 Text(L.alertRestMore)
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.8))
-                    .frame(width: 200)
-                    .padding(.vertical, 12)
-                    .background(Color.white.opacity(0.15), in: RoundedRectangle(cornerRadius: 10))
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.7))
+                    .frame(width: 280)
+                    .padding(.vertical, 10)
+                    .background(Color.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
             }
             .buttonStyle(.borderless)
         }
