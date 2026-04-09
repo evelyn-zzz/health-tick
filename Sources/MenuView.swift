@@ -210,6 +210,7 @@ private struct MenuTimerCircle: View {
 
 private struct MenuStatsContent: View {
     @Environment(AppState.self) var state
+    @Environment(\.openWindow) private var openWindow
     @State private var show24hHeatmap = false
 
     var body: some View {
@@ -501,6 +502,12 @@ private func menuPixelColor(count: Int, goal: Int) -> Color {
     if ratio >= 1.0 { return .green }
     if ratio >= 0.5 { return .green.opacity(0.55) }
     return .green.opacity(0.3)
+}
+
+private func menuShortDay(_ dateStr: String) -> String {
+    let parts = dateStr.split(separator: "-")
+    guard parts.count == 3, let d = Int(parts[2]) else { return "" }
+    return "\(d)"
 }
 
 private struct Menu24hHeatmapView: View {

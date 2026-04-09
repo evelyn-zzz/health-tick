@@ -786,7 +786,7 @@ final class Database {
                 
                 let breakStartStr = sqlite3_column_type(stmt, 3) != SQLITE_NULL ? String(cString: sqlite3_column_text(stmt, 3)) : nil
                 let breakEndStr = sqlite3_column_type(stmt, 4) != SQLITE_NULL ? String(cString: sqlite3_column_text(stmt, 4)) : nil
-                let breakActualSecs = sqlite3_column_type(stmt, 5) != SQLITE_NULL ? Int(sqlite3_column_int(stmt, 5)) : nil
+                let _ = sqlite3_column_type(stmt, 5) != SQLITE_NULL ? Int(sqlite3_column_int(stmt, 5)) : nil
                 let skipped = sqlite3_column_int(stmt, 6) == 1
                 let goal = Int(sqlite3_column_int(stmt, 7))
                 
