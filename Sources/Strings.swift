@@ -164,6 +164,19 @@ struct L {
     static var defaultReminder1: String { isZh ? "该起来走走了" : "Time to stand up and walk" }
     static var defaultReminder2: String { isZh ? "该喝水了" : "Time to drink water" }
 
+    // MARK: - Settings - Work End Reminder
+    static var workEndReminderLabel: String { isZh ? "下班提醒" : "End of Day Reminder" }
+    static var workEndReminderDesc: String { isZh ? "到达下班时间时，展示一条温馨提示" : "Show a warm message when work hours end" }
+    static var workEndReminderHint: String { isZh ? "随机展示一条，可自定义" : "A random message shown at end of work hours" }
+    static var addWorkEndReminderPlaceholder: String { isZh ? "添加新的下班提示..." : "Add a new message..." }
+    static var workEndReminderTitle: String { isZh ? "今日辛苦了" : "Day's Work Done" }
+    static var workEndReminderNeedsWorkHours: String { isZh ? "需要先在「计划」中开启「工作时间」" : "Enable Work Hours in Plan settings first" }
+    static var workEndDefaultMsg1: String { isZh ? "今天也辛苦啦，好好休息一下吧 🌙" : "Great work today, time to recharge 🌙" }
+    static var workEndDefaultMsg2: String { isZh ? "放下手头的工作，享受属于自己的时光 ✨" : "Set work aside and enjoy your own time ✨" }
+    static var workEndDefaultMsg3: String { isZh ? "明天的事明天再说，先好好放松一下 🍵" : "Tomorrow's tasks can wait, relax for now 🍵" }
+    static var workEndDefaultMsg4: String { isZh ? "工作告一段落，去陪陪家人或做些喜欢的事吧 💛" : "Work's done — spend time with people you love 💛" }
+    static var workEndDefaultMsg5: String { isZh ? "今天的努力已经足够，期待明天的自己 🌟" : "Today's effort is enough, look forward to tomorrow 🌟" }
+
     // MARK: - Settings - About
     static var checkUpdate: String { isZh ? "检查更新" : "Check for Updates" }
     static var checking: String { isZh ? "检查中..." : "Checking..." }

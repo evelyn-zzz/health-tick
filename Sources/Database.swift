@@ -139,6 +139,13 @@ final class Database {
                 case "work_hours_enabled": config.workHoursEnabled = value == "1"
                 case "work_start_time": config.workStartTime = value
                 case "work_end_time": config.workEndTime = value
+                case "work_end_reminder_enabled": config.workEndReminderEnabled = value == "1"
+                case "work_end_reminder_messages":
+                    if let data = value.data(using: .utf8),
+                       let arr = try? JSONDecoder().decode([String].self, from: data),
+                       !arr.isEmpty {
+                        config.workEndReminderMessages = arr
+                    }
                 case "long_break_enabled": config.longBreakEnabled = value == "1"
                 case "long_break_interval": config.longBreakInterval = Int(value) ?? 4
                 case "long_break_seconds": config.longBreakSeconds = Int(value) ?? 900
@@ -198,6 +205,10 @@ final class Database {
         exec("INSERT OR REPLACE INTO config (key, value) VALUES ('work_hours_enabled', '\(config.workHoursEnabled ? "1" : "0")')")
         exec("INSERT OR REPLACE INTO config (key, value) VALUES ('work_start_time', '\(config.workStartTime)')")
         exec("INSERT OR REPLACE INTO config (key, value) VALUES ('work_end_time', '\(config.workEndTime)')")
+        exec("INSERT OR REPLACE INTO config (key, value) VALUES ('work_end_reminder_enabled', '\(config.workEndReminderEnabled ? "1" : "0")')")
+        let workEndMsgsJSON = (try? JSONEncoder().encode(config.workEndReminderMessages))
+            .flatMap { String(data: $0, encoding: .utf8) } ?? "[]"
+        exec("INSERT OR REPLACE INTO config (key, value) VALUES ('work_end_reminder_messages', '\(workEndMsgsJSON.replacingOccurrences(of: "'", with: "''"))')")
         exec("DELETE FROM config WHERE key = 'break_minutes'")
     }
 

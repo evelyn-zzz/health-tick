@@ -851,3 +851,44 @@ final class BreakOverlayManager {
         }
     }
 }
+
+// MARK: - Work End Reminder Banner
+
+struct WorkEndReminderView: View {
+    let message: String
+    let onDismiss: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text("🌙")
+                .font(.title2)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(L.workEndReminderTitle)
+                    .font(.system(size: 13, weight: .semibold))
+                Text(message)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+            Spacer()
+            Button {
+                onDismiss()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(.tertiary)
+                    .frame(width: 18, height: 18)
+                    .background(.quaternary, in: Circle())
+            }
+            .buttonStyle(.borderless)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .strokeBorder(.quaternary, lineWidth: 0.5)
+        )
+        .shadow(color: .black.opacity(0.12), radius: 12, x: 0, y: 4)
+    }
+}

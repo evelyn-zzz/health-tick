@@ -187,7 +187,8 @@ struct AppConfig: Equatable {
     var shortcutKeyCode: UInt16 = 36  // Return
     var shortcutModifiers: UInt = 1048576  // Command
     var extendMinutes: Int = 10            // 默认延长时间
-
+    var workEndReminderEnabled: Bool = false
+    var workEndReminderMessages: [String] = [L.workEndDefaultMsg1, L.workEndDefaultMsg2, L.workEndDefaultMsg3, L.workEndDefaultMsg4, L.workEndDefaultMsg5]
 
     var shortcutDisplay: String {
         var parts: [String] = []
@@ -308,6 +309,8 @@ final class AppState {
     private var restartPromptTimer: Timer?
     private var lastSavedConfig: AppConfig?
     private var localMonitor: Any?
+    private var lastWorkEndReminderDate: String = ""
+    private var workEndReminderPanel: NSPanel?
 
     var earnedTotalBadges: [Badge] {
         allTotalBadges.filter { totalCount >= $0.days }
@@ -1036,9 +1039,77 @@ final class AppState {
             Task { @MainActor [weak self] in
                 self?.checkDayChange()
                 self?.checkQuietHours()
+                self?.checkWorkEndReminder()
             }
         }
         checkQuietHours()
+        checkWorkEndReminder()
+    }
+
+    // MARK: - Work End Reminder
+
+    private func checkWorkEndReminder() {
+        guard config.workHoursEnabled && config.workEndReminderEnabled else { return }
+        let today = Database.todayString()
+        guard lastWorkEndReminderDate != today else { return }
+
+        let cal = Calendar.current
+        let now = Date()
+        let h = cal.component(.hour, from: now)
+        let m = cal.component(.minute, from: now)
+        let nowMins = h * 60 + m
+
+        let parts = config.workEndTime.split(separator: ":").compactMap { Int($0) }
+        guard parts.count == 2 else { return }
+        let endMins = parts[0] * 60 + parts[1]
+
+        // Trigger within the 30-second polling window (same minute as end time)
+        if nowMins == endMins {
+            lastWorkEndReminderDate = today
+            let message = config.workEndReminderMessages.randomElement() ?? L.workEndDefaultMsg1
+            showWorkEndReminder(message: message)
+        }
+    }
+
+    func showWorkEndReminder(message: String) {
+        workEndReminderPanel?.close()
+        workEndReminderPanel = nil
+
+        guard let screen = NSScreen.main else { return }
+        let panelW: CGFloat = 320
+        let panelH: CGFloat = 100
+        let margin: CGFloat = 16
+        let vis = screen.visibleFrame
+        let x = vis.maxX - panelW - margin
+        let y = vis.maxY - panelH - margin
+
+        let panel = NSPanel(
+            contentRect: NSMakeRect(x, y, panelW, panelH),
+            styleMask: [.borderless, .nonactivatingPanel],
+            backing: .buffered,
+            defer: false
+        )
+        panel.level = .floating
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.hasShadow = true
+        panel.appearance = NSApp?.effectiveAppearance
+
+        let view = WorkEndReminderView(message: message) { [weak self] in
+            self?.workEndReminderPanel?.close()
+            self?.workEndReminderPanel = nil
+        }
+        let hosting = NSHostingView(rootView: view)
+        hosting.frame = NSMakeRect(0, 0, panelW, panelH)
+        panel.contentView = hosting
+        panel.makeKeyAndOrderFront(nil)
+        workEndReminderPanel = panel
+
+        // Auto-dismiss after 8 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 8) { [weak self] in
+            self?.workEndReminderPanel?.close()
+            self?.workEndReminderPanel = nil
+        }
     }
 
     func resumeFromGoalStop() {

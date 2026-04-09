@@ -845,10 +845,18 @@ struct ReminderTab: View {
     @State private var newReminder = ""
     @State private var editingIndex: Int? = nil
     @State private var editingText = ""
+    @State private var newWorkEndMsg = ""
+    @State private var editingWorkEndIndex: Int? = nil
+    @State private var editingWorkEndText = ""
 
     var body: some View {
+        @Bindable var state = state
 
-        VStack(spacing: 16) {
+        ScrollView {
+        VStack(spacing: 20) {
+
+            // MARK: Break Reminders
+            VStack(spacing: 8) {
             HStack {
                 Text(L.reminderHint)
                     .font(.caption)
@@ -928,11 +936,128 @@ struct ReminderTab: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
+            } // end break reminders VStack
+
+            Divider()
+
+            // MARK: Work End Reminder
+            VStack(spacing: 8) {
+                HStack(spacing: 10) {
+                    Image(systemName: "moon.stars.fill")
+                        .font(.callout)
+                        .foregroundStyle(.indigo)
+                        .frame(width: 20)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(L.workEndReminderLabel)
+                            .font(.callout)
+                        Text(L.workEndReminderDesc)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Toggle("", isOn: $state.config.workEndReminderEnabled)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .tint(.green)
+                }
+
+                if state.config.workEndReminderEnabled {
+                    if !state.config.workHoursEnabled {
+                        HStack(spacing: 6) {
+                            Image(systemName: "info.circle")
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                            Text(L.workEndReminderNeedsWorkHours)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.horizontal, 4)
+                    }
+
+                    HStack {
+                        Text(L.workEndReminderHint)
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                        Spacer()
+                    }
+
+                    VStack(spacing: 0) {
+                        ForEach(Array(state.config.workEndReminderMessages.enumerated()), id: \.offset) { i, msg in
+                            if i > 0 { Divider().padding(.leading, 14) }
+                            HStack(spacing: 10) {
+                                Circle()
+                                    .fill(.indigo.opacity(0.6))
+                                    .frame(width: 6, height: 6)
+                                if editingWorkEndIndex == i {
+                                    TextField("", text: $editingWorkEndText)
+                                        .textFieldStyle(.plain)
+                                        .font(.callout)
+                                        .onSubmit { saveWorkEndEdit(at: i) }
+                                        .onExitCommand { editingWorkEndIndex = nil }
+                                } else {
+                                    Text(msg)
+                                        .font(.callout)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .contentShape(Rectangle())
+                                        .onTapGesture {
+                                            editingWorkEndIndex = i
+                                            editingWorkEndText = msg
+                                        }
+                                        .handCursor()
+                                }
+                                Spacer()
+                                if state.config.workEndReminderMessages.count > 1 {
+                                    Button {
+                                        if editingWorkEndIndex == i { editingWorkEndIndex = nil }
+                                        _ = state.config.workEndReminderMessages.remove(at: i)
+                                    } label: {
+                                        Image(systemName: "xmark")
+                                            .font(.system(size: 9, weight: .bold))
+                                            .foregroundStyle(.tertiary)
+                                            .frame(width: 18, height: 18)
+                                            .background(.quaternary, in: Circle())
+                                    }
+                                    .buttonStyle(.borderless)
+                                    .handCursor()
+                                }
+                            }
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                        }
+                    }
+                    .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
+
+                    HStack(spacing: 8) {
+                        Image(systemName: "plus")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                        TextField(L.addWorkEndReminderPlaceholder, text: $newWorkEndMsg)
+                            .textFieldStyle(.plain)
+                            .font(.callout)
+                            .onSubmit { addWorkEndMsg() }
+                        if !newWorkEndMsg.trimmingCharacters(in: .whitespaces).isEmpty {
+                            Button { addWorkEndMsg() } label: {
+                                Image(systemName: "arrow.up.circle.fill")
+                                    .font(.title3)
+                                    .foregroundStyle(.indigo)
+                            }
+                            .buttonStyle(.borderless)
+                            .transition(.scale.combined(with: .opacity))
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(.quaternary.opacity(0.3), in: RoundedRectangle(cornerRadius: 10))
+                    .animation(.easeInOut(duration: 0.15), value: newWorkEndMsg)
+                }
+            }
 
             Spacer()
-        }
+        } // end outer VStack
         .padding(24)
+        } // end ScrollView
         .animation(.easeInOut(duration: 0.15), value: newReminder)
+        .animation(.easeInOut(duration: 0.2), value: state.config.workEndReminderEnabled)
     }
 
     private func addReminder() {
@@ -948,6 +1073,21 @@ struct ReminderTab: View {
             state.config.reminders[index] = text
         }
         editingIndex = nil
+    }
+
+    private func addWorkEndMsg() {
+        let text = newWorkEndMsg.trimmingCharacters(in: .whitespaces)
+        guard !text.isEmpty else { return }
+        withAnimation { state.config.workEndReminderMessages.append(text) }
+        newWorkEndMsg = ""
+    }
+
+    private func saveWorkEndEdit(at index: Int) {
+        let text = editingWorkEndText.trimmingCharacters(in: .whitespaces)
+        if !text.isEmpty && index < state.config.workEndReminderMessages.count {
+            state.config.workEndReminderMessages[index] = text
+        }
+        editingWorkEndIndex = nil
     }
 }
 
