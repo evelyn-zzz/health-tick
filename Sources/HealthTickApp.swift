@@ -91,7 +91,7 @@ struct HealthTickApp: App {
             StatsWindowView()
                 .environment(state)
         }
-        .defaultSize(width: 620, height: 420)
+        .defaultSize(width: 480, height: 560)
 
         Window(L.onboardingWindow, id: "onboarding") {
             OnboardingView()
@@ -105,7 +105,7 @@ struct HealthTickApp: App {
             TimelineWindowView()
                 .environment(state)
         }
-        .defaultSize(width: 400, height: 500)
+        .defaultSize(width: 320, height: 480)
         .windowResizability(.contentSize)
         .windowToolbarStyle(.unified)
 
