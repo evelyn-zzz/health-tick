@@ -804,6 +804,7 @@ final class Database {
                 }
                 
                 if let bStartStr = breakStartStr, let start = iso.date(from: bStartStr) {
+                    let end = breakEndStr.flatMap { iso.date(from: $0) }
                     let actualMins = end.map { Int(round($0.timeIntervalSince(start) / 60.0)) } ?? 0
                     result.append(DaySession(
                         type: .break,
