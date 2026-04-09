@@ -99,11 +99,21 @@ struct HealthTickApp: App {
         }
         .defaultSize(width: 500, height: 450)
         .windowResizability(.contentSize)
+        .windowToolbarStyle(.unified)
+
+        Window(L.timelineTitle, id: "timeline") {
+            TimelineWindowView()
+                .environment(state)
+        }
+        .defaultSize(width: 400, height: 500)
+        .windowResizability(.contentSize)
+        .windowToolbarStyle(.unified)
 
         Window(L.newVersionFound, id: "update") {
             UpdateDialogView(updater: UpdateChecker.shared)
         }
         .windowResizability(.contentSize)
+        .windowToolbarStyle(.unified)
     }
 
     private func bringToFront() {

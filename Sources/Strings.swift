@@ -366,6 +366,7 @@ struct L {
     static var helpWindow: String { isZh ? "帮助" : "Help" }
     static var statsWindow: String { isZh ? "成就" : "Achievements" }
     static var onboardingWindow: String { isZh ? "欢迎" : "Welcome" }
+    static var timelineTitle: String { isZh ? "时间轴" : "Timeline" }
 
     // MARK: - Quiet Hours
     static var quietHours: String { isZh ? "休息时段" : "Quiet Hours" }

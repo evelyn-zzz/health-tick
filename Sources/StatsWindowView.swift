@@ -7,33 +7,17 @@ enum HeatmapMode {
 
 struct StatsWindowView: View {
     @Environment(AppState.self) var state
+    @Environment(\.openWindow) private var openWindow
     @State private var heatmapMode: HeatmapMode = .checkIns
     @State private var selectedBarIndex: Int? = nil
-    @State private var selectedDetailDate: DetailDate? = nil
     private let db = Database.shared
-
-    struct DetailDate: Identifiable {
-        let id: String
-    }
 
     var body: some View {
         TabView {
-            statsTab
+            statsContent
                 .tabItem { Label(L.tabStats, systemImage: "chart.bar.fill") }
             badgesTab
                 .tabItem { Label(L.tabBadges, systemImage: "medal.fill") }
-        }
-        .onAppear {
-            if let pending = state.pendingDetailDate {
-                selectedDetailDate = DetailDate(id: pending)
-                state.pendingDetailDate = nil
-            }
-        }
-        .onChange(of: state.pendingDetailDate) { _, newValue in
-            if let pending = newValue {
-                selectedDetailDate = DetailDate(id: pending)
-                state.pendingDetailDate = nil
-            }
         }
     }
 
@@ -41,68 +25,45 @@ struct StatsWindowView: View {
     // MARK: - Stats Tab
     // =========================================================================
 
-    private var statsTab: some View {
+    private var statsContent: some View {
         let goal = state.config.dailyGoal
         let (wDone, wTotal) = db.weekCompletionRate(goal: goal)
         
-        return ZStack {
-            VStack(spacing: 0) {
-                VStack(spacing: 12) {
-                    // Top: stat cards — 1 row of 4
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 8) {
-                        statCard(
-                            value: "\(state.todayDone)/\(goal)",
-                            label: L.todayDone,
-                            icon: "checkmark.circle.fill",
-                            color: .green,
-                            progress: Double(state.todayDone) / Double(max(goal, 1))
-                        )
-                        statCard(value: L.formatWorkTimeShort(state.todayWorkMinutes), label: L.todayWorkTimeLabel, icon: "clock.fill", color: .blue)
-                        statCard(value: L.formatWorkTimeShort(state.todayBreakMinutes), label: L.todayBreakTimeLabel, icon: "cup.and.saucer.fill", color: .orange)
-                        statCard(value: "\(wDone)/\(wTotal)", label: L.weekGoal, icon: "calendar", color: .purple)
-                    }
-                    .padding(.horizontal, 20)
-
-                    // Bottom: heatmap / work time chart
-                    heatmapSection
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 12)
-                        .background(.quaternary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
-                        .padding(.horizontal, 20)
-                }
-                .padding(.top, 12)
-
-                Spacer(minLength: 0)
-
-                // Encourage
-                Text(state.encourageText)
-                    .font(.system(size: 13))
-                    .foregroundStyle(.green)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-                    .background(.green.opacity(0.04))
-            }
-
-            // Custom Popover Layer
-            if let detail = selectedDetailDate {
-                Color.black.opacity(0.25)
-                    .ignoresSafeArea()
-                    .transition(.opacity)
-                    .onTapGesture {
-                        withAnimation { selectedDetailDate = nil }
-                    }
-
-                DayDetailView(date: detail.id)
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                    .shadow(color: .black.opacity(0.3), radius: 20, x: 0, y: 10)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16)
-                            .stroke(Color.primary.opacity(0.1), lineWidth: 0.5)
+        return VStack(spacing: 0) {
+            VStack(spacing: 12) {
+                // Top: stat cards — 1 row of 4
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 8) {
+                    statCard(
+                        value: "\(state.todayDone)/\(goal)",
+                        label: L.todayDone,
+                        icon: "checkmark.circle.fill",
+                        color: .green,
+                        progress: Double(state.todayDone) / Double(max(goal, 1))
                     )
-                    .padding(40)
-                    .transition(.scale(scale: 0.95).combined(with: .opacity))
-                    .zIndex(1)
+                    statCard(value: L.formatWorkTimeShort(state.todayWorkMinutes), label: L.todayWorkTimeLabel, icon: "clock.fill", color: .blue)
+                    statCard(value: L.formatWorkTimeShort(state.todayBreakMinutes), label: L.todayBreakTimeLabel, icon: "cup.and.saucer.fill", color: .orange)
+                    statCard(value: "\(wDone)/\(wTotal)", label: L.weekGoal, icon: "calendar", color: .purple)
+                }
+                .padding(.horizontal, 20)
+
+                // Bottom: heatmap / work time chart
+                heatmapSection
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                    .background(.quaternary.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+                    .padding(.horizontal, 20)
             }
+            .padding(.top, 12)
+
+            Spacer(minLength: 0)
+
+            // Encourage
+            Text(state.encourageText)
+                .font(.system(size: 13))
+                .foregroundStyle(.green)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .background(.green.opacity(0.04))
         }
     }
 
@@ -235,9 +196,8 @@ struct StatsWindowView: View {
                         )
                         .contentShape(Rectangle())
                         .onTapGesture {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                selectedDetailDate = DetailDate(id: item.0)
-                            }
+                            state.pendingDetailDate = item.0
+                            openWindow(id: "timeline")
                         }
                 }
             }
@@ -303,12 +263,9 @@ struct StatsWindowView: View {
                         .frame(maxWidth: .infinity)
                         .contentShape(Rectangle())
                         .onTapGesture {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                                selectedDetailDate = DetailDate(id: item.0)
-                            }
-                            withAnimation(.easeInOut(duration: 0.12)) {
-                                selectedBarIndex = selectedBarIndex == idx ? nil : idx
-                            }
+                            selectedBarIndex = idx
+                            state.pendingDetailDate = item.0
+                            openWindow(id: "timeline")
                         }
                         .help("\(L.formatWorkTime(item.1))\(longDate(item.0))")
                     }
@@ -597,6 +554,29 @@ struct StatsWindowView: View {
     }
 }
 
+struct TimelineWindowView: View {
+    @Environment(AppState.self) var state
+    @State private var currentDate: String = Database.todayString()
+    
+    var body: some View {
+        DayDetailView(date: currentDate)
+            .id(currentDate) // Force refresh when date changes
+            .onAppear {
+                if let pending = state.pendingDetailDate {
+                    currentDate = pending
+                    // Do not clear it immediately here if we want other windows to potentially react, 
+                    // but usually it's better to clear it to avoid re-triggering.
+                    // state.pendingDetailDate = nil
+                }
+            }
+            .onChange(of: state.pendingDetailDate) { _, newValue in
+                if let pending = newValue {
+                    currentDate = pending
+                }
+            }
+    }
+}
+
 // MARK: - Day Detail View
 
 struct DayDetailView: View {
@@ -662,6 +642,9 @@ struct DayDetailView: View {
         .frame(minWidth: 320, maxWidth: 450, minHeight: 300, maxHeight: 600)
         .background(Color(nsColor: .windowBackgroundColor))
         .onAppear {
+            loadData()
+        }
+        .onChange(of: date) { _, _ in
             loadData()
         }
     }

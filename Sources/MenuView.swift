@@ -321,7 +321,7 @@ private struct MenuStatsContent: View {
                                 )
                                 .onTapGesture {
                                     state.pendingDetailDate = item.0
-                                    openWindow(id: "stats")
+                                    openWindow(id: "timeline")
                                     menuBringToFront()
                                 }
                             Text(menuShortDay(item.0))
@@ -530,7 +530,7 @@ private struct Menu24hHeatmapView: View {
             .contentShape(Rectangle())
             .onTapGesture {
                 state.pendingDetailDate = today
-                openWindow(id: "stats")
+                openWindow(id: "timeline")
                 menuBringToFront()
             }
             
