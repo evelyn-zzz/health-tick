@@ -781,34 +781,51 @@ struct Daily24hHeatmapView: View {
         let blocks = db.day10MinActivity(date: date)
         
         VStack(spacing: 16) {
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 12), spacing: 4) {
-                ForEach(0..<144, id: \.self) { i in
-                    let status = blocks[i]
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(colorForStatus(status))
-                        .aspectRatio(1, contentMode: .fill)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 2)
-                                .stroke(Color.primary.opacity(0.05), lineWidth: 0.5)
-                        )
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 6) {
+                    // Header for slots
+                    HStack(spacing: 8) {
+                        Spacer().frame(width: 40)
+                        HStack(spacing: 2) {
+                            ForEach([0, 20, 40], id: \.self) { m in
+                                Text("\(m)m").font(.system(size: 8)).foregroundStyle(.tertiary).frame(maxWidth: .infinity)
+                            }
+                        }
+                    }
+                    
+                    ForEach(0..<24, id: \.self) { hour in
+                        HStack(spacing: 12) {
+                            Text(String(format: "%02d:00", hour))
+                                .font(.system(size: 11, weight: .medium, design: .monospaced))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 40, alignment: .trailing)
+                            
+                            HStack(spacing: 3) {
+                                ForEach(0..<6, id: \.self) { slot in
+                                    let i = hour * 6 + slot
+                                    let status = blocks[i]
+                                    RoundedRectangle(cornerRadius: 3)
+                                        .fill(colorForStatus(status))
+                                        .frame(height: 14)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 3)
+                                                .stroke(Color.primary.opacity(0.04), lineWidth: 0.5)
+                                        )
+                                }
+                            }
+                        }
+                    }
                 }
+                .padding(.bottom, 10)
             }
-            
-            HStack {
-                Text("00:00").font(.system(size: 10, design: .monospaced))
-                Spacer()
-                Text("12:00").font(.system(size: 10, design: .monospaced))
-                Spacer()
-                Text("23:50").font(.system(size: 10, design: .monospaced))
-            }
-            .foregroundStyle(.secondary)
-            
+            .frame(maxHeight: .infinity)
+                
             // Legend
             HStack(spacing: 20) {
                 legendItem(L.phaseWorking, color: .green)
                 legendItem(L.phaseBreaking, color: .orange)
             }
-            .padding(.top, 10)
+            .padding(.top, 5)
         }
     }
     
