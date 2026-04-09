@@ -675,7 +675,7 @@ struct DayDetailView: View {
 
 
     private func timelineRow(session: Database.DaySession, prevEnd: Date?) -> some View {
-        let themeColor = session.type == .work ? Color.green : Color.orange
+        let themeColor = session.type == .work ? Color.purple : Color.green
         let isSameTimeAsPrev = prevEnd != nil && abs(session.start.timeIntervalSince(prevEnd!)) < 60
         
         return HStack(alignment: .top, spacing: 14) {
@@ -822,8 +822,8 @@ struct Daily24hHeatmapView: View {
                 
             // Legend
             HStack(spacing: 20) {
-                legendItem(L.phaseWorking, color: .green)
-                legendItem(L.phaseBreaking, color: .orange)
+                legendItem(L.phaseWorking, color: .purple)
+                legendItem(L.phaseBreaking, color: .green)
             }
             .padding(.top, 5)
         }
@@ -839,8 +839,8 @@ struct Daily24hHeatmapView: View {
     private func colorForStatus(_ s: Database.ActivityType) -> Color {
         switch s {
         case .none: return Color.primary.opacity(0.05)
-        case .work: return .green
-        case .break: return .orange
+        case .work: return .purple
+        case .break: return .green
         }
     }
 }
