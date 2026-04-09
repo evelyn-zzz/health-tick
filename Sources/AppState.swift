@@ -186,6 +186,8 @@ struct AppConfig: Equatable {
     var longBreakSeconds: Int = 900           // 15 minutes default
     var shortcutKeyCode: UInt16 = 36  // Return
     var shortcutModifiers: UInt = 1048576  // Command
+    var extendMinutes: Int = 10            // 默认延长时间
+
 
     var shortcutDisplay: String {
         var parts: [String] = []
@@ -519,6 +521,17 @@ final class AppState {
         startBreak()
     }
 
+    func snoozeWork() {
+        alertRepeatTimer?.invalidate()
+        alertRepeatTimer = nil
+        overlayManager.dismissMenuPanel()
+        
+        phase = .working
+        remainingSeconds = config.extendMinutes * 60
+        targetTime = Date().addingTimeInterval(Double(remainingSeconds))
+        startTicking()
+    }
+
     // MARK: - Break
 
     private func startBreak() {
@@ -605,6 +618,18 @@ final class AppState {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
                 self?.showBadgeCelebration(badge)
             }
+        }
+    }
+
+    func snoozeBreak() {
+        // Extend "waiting" state (want more rest)
+        phase = .breaking
+        remainingSeconds = config.extendMinutes * 60
+        
+        if config.breakPosition == .menuWindow {
+            overlayManager.showMenuWindow(seconds: remainingSeconds)
+        } else {
+            overlayManager.show(seconds: remainingSeconds)
         }
     }
 

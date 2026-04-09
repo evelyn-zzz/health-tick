@@ -398,6 +398,19 @@ struct AppTab: View {
 
                     Divider().padding(.vertical, 4)
 
+                    // Snooze/Extend
+                    sliderRow(icon: "timer.circle", label: L.extendDurationConfig, value: Binding(
+                        get: { Double(state.config.extendMinutes) },
+                        set: { state.config.extendMinutes = Int($0) }
+                    ), range: 1...30, unit: L.unitMinutes, color: .orange)
+                    Text(L.extendDurationDesc)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.leading, 24)
+
+                    Divider().padding(.vertical, 4)
+
                     // Long Break
                     VStack(spacing: 4) {
                         HStack {

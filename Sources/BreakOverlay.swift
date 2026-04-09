@@ -70,18 +70,32 @@ struct BreakCardView: View {
                 .padding(.top, 10)
         }
 
-        Button {
-            state.confirmBreak()
-        } label: {
-            Text(L.alertConfirmBreak)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
-                .background(.orange.gradient, in: RoundedRectangle(cornerRadius: 10))
+        HStack(spacing: 12) {
+            Button {
+                state.confirmBreak()
+            } label: {
+                Text(L.alertConfirmBreak)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(.orange.gradient, in: RoundedRectangle(cornerRadius: 10))
+            }
+            .buttonStyle(.borderless)
+
+            Button {
+                state.snoozeWork()
+            } label: {
+                Text(L.alertWorkMore)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(.primary.opacity(0.8))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
+            }
+            .buttonStyle(.borderless)
         }
-        .buttonStyle(.borderless)
-        .padding(.horizontal, 24)
+        .padding(.horizontal, 16)
         .padding(.top, 16)
 
         if state.config.shortcutEnabled {
@@ -189,18 +203,32 @@ struct BreakCardView: View {
             .padding(.horizontal, 20)
             .padding(.top, 14)
 
-        Button {
-            state.confirmReturn()
-        } label: {
-            Text(L.alertImBack)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
-                .background(.green.gradient, in: RoundedRectangle(cornerRadius: 10))
+        HStack(spacing: 12) {
+            Button {
+                state.confirmReturn()
+            } label: {
+                Text(L.alertImBack)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(.green.gradient, in: RoundedRectangle(cornerRadius: 10))
+            }
+            .buttonStyle(.borderless)
+
+            Button {
+                state.snoozeBreak()
+            } label: {
+                Text(L.alertRestMore)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(.primary.opacity(0.8))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
+            }
+            .buttonStyle(.borderless)
         }
-        .buttonStyle(.borderless)
-        .padding(.horizontal, 24)
+        .padding(.horizontal, 16)
         .padding(.top, 20)
 
         if state.config.shortcutEnabled {
@@ -229,17 +257,31 @@ struct BreakCardView: View {
                 .multilineTextAlignment(.center)
         }
 
-        Button {
-            state.confirmBreak()
-        } label: {
-            Text(L.alertConfirmBreak)
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(maxWidth: 280)
-                .padding(.vertical, 12)
-                .background(.orange.gradient, in: RoundedRectangle(cornerRadius: 10))
+        HStack(spacing: 20) {
+            Button {
+                state.confirmBreak()
+            } label: {
+                Text(L.alertConfirmBreak)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 200)
+                    .padding(.vertical, 12)
+                    .background(.orange.gradient, in: RoundedRectangle(cornerRadius: 10))
+            }
+            .buttonStyle(.borderless)
+
+            Button {
+                state.snoozeWork()
+            } label: {
+                Text(L.alertWorkMore)
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.8))
+                    .frame(width: 200)
+                    .padding(.vertical, 12)
+                    .background(Color.white.opacity(0.15), in: RoundedRectangle(cornerRadius: 10))
+            }
+            .buttonStyle(.borderless)
         }
-        .buttonStyle(.borderless)
 
         if state.config.shortcutEnabled {
             Text(L.shortcutQuickConfirm(state.config.shortcutDisplay))
@@ -333,17 +375,31 @@ struct BreakCardView: View {
             .foregroundStyle(.white.opacity(0.7))
             .multilineTextAlignment(.center)
 
-        Button {
-            state.confirmReturn()
-        } label: {
-            Text(L.alertImBack)
-                .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(maxWidth: 280)
-                .padding(.vertical, 12)
-                .background(.green.gradient, in: RoundedRectangle(cornerRadius: 10))
+        HStack(spacing: 20) {
+            Button {
+                state.confirmReturn()
+            } label: {
+                Text(L.alertImBack)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 200)
+                    .padding(.vertical, 12)
+                    .background(.green.gradient, in: RoundedRectangle(cornerRadius: 10))
+            }
+            .buttonStyle(.borderless)
+
+            Button {
+                state.snoozeBreak()
+            } label: {
+                Text(L.alertRestMore)
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.8))
+                    .frame(width: 200)
+                    .padding(.vertical, 12)
+                    .background(Color.white.opacity(0.15), in: RoundedRectangle(cornerRadius: 10))
+            }
+            .buttonStyle(.borderless)
         }
-        .buttonStyle(.borderless)
 
         if state.config.shortcutEnabled {
             Text(L.shortcutQuickConfirm(state.config.shortcutDisplay))

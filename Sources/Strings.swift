@@ -85,6 +85,12 @@ struct L {
     static var alertConfirmBreak: String { isZh ? "好的，我去休息" : "OK, I'll take a break" }
     static var breakOverReturnPrompt: String { isZh ? "休息结束啦！准备好继续工作了吗？" : "Break is over! Ready to get back to work?" }
     static var alertImBack: String { isZh ? "我回来了" : "I'm back" }
+    static var alertWorkMore: String { isZh ? "再工作一会" : "Work more" }
+    static var alertRestMore: String { isZh ? "再休息一会" : "Rest more" }
+    static var extendDuration: String { isZh ? "再等一会" : "Snooze" }
+    static var extendDurationConfig: String { isZh ? "延长时间" : "Extension" }
+    static var extendDurationDesc: String { isZh ? "闹钟弹出时点击‘再工作/休息一会’增加的时长" : "Extra time when snoozing alerts" }
+
 
     // MARK: - Settings - Tabs
     static var tabGeneral: String { isZh ? "通用" : "General" }
