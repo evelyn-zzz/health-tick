@@ -5,8 +5,8 @@ cd "$(dirname "$0")"
 # Read version from Info.plist
 VERSION=$(grep -A1 CFBundleShortVersionString Sources/Info.plist | tail -1 | sed 's/.*<string>\(.*\)<\/string>.*/\1/')
 TAG="v${VERSION}"
-REPO="lifedever/health-tick-release"
-GITEE_REPO="lifedever/health-tick-release"
+REPO="evelyn-zzz/health-tick"
+GITEE_REPO="evelyn-zzz/health-tick"
 
 echo "=== HealthTick Release ${TAG} ==="
 echo ""
