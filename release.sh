@@ -2,8 +2,33 @@
 set -e
 cd "$(dirname "$0")"
 
-# Read version from Info.plist
-VERSION=$(grep -A1 CFBundleShortVersionString Sources/Info.plist | tail -1 | sed 's/.*<string>\(.*\)<\/string>.*/\1/')
+# Version bumping logic
+PLIST="Sources/Info.plist"
+CURRENT_VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$PLIST")
+CURRENT_BUILD=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$PLIST")
+
+if [ "$1" != "" ]; then
+    VERSION=$1
+else
+    # Auto increment patch (the last number after the last dot)
+    if [[ $CURRENT_VERSION == *.*.* ]]; then
+        BASE=$(echo $CURRENT_VERSION | cut -d. -f1,2)
+        PATCH=$(echo $CURRENT_VERSION | cut -d. -f3)
+        VERSION="${BASE}.$((PATCH + 1))"
+    else
+        VERSION="${CURRENT_VERSION}.1"
+    fi
+fi
+BUILD=$((CURRENT_BUILD + 1))
+
+echo "Bumping version: $CURRENT_VERSION ($CURRENT_BUILD) -> $VERSION ($BUILD)"
+/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" "$PLIST"
+/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD" "$PLIST"
+
+# Commit the version bump
+git add "$PLIST"
+git diff --cached --quiet || git commit -m "chore: bump version to $VERSION ($BUILD)"
+
 TAG="v${VERSION}"
 REPO="evelyn-zzz/health-tick"
 GITEE_REPO="evelyn-zzz/health-tick"
