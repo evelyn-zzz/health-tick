@@ -950,8 +950,8 @@ final class Database {
             
             let type: ActivityType = s.type == .work ? .work : .break
             for i in max(0, startIndex)...min(143, endIndex) {
-                // Work overrides break if they overlap in a 10min block
-                if blocks[i] == .work && type == .break { continue }
+                // Break overrides work: any rest in a 10min block makes it visible as break
+                if blocks[i] == .break && type == .work { continue }
                 blocks[i] = type
             }
         }
