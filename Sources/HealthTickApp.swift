@@ -165,6 +165,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var observer: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // 设置为 accessory 策略：无 Dock 图标，但出现在强制退出列表和活动监视器中
+        NSApp.setActivationPolicy(.accessory)
+
         let iconPath = Bundle.main.bundlePath + "/Contents/Resources/AppIcon.icns"
         if let icon = NSImage(contentsOfFile: iconPath) {
             NSApp.applicationIconImage = icon
