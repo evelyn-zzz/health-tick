@@ -29,38 +29,41 @@ struct BreakCardView: View {
     }
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
+        Group {
             if state.isBreakWindowHidden {
                 minimizedBody
-            } else {
-                // 内容区域
-                if fullscreen {
-                    VStack(spacing: 20) {
-                        switch state.phase {
-                        case .alerting: alertingBody
-                        case .waiting: waitingBody
-                        case .breaking: breakBody
-                        default: EmptyView()
-                        }
+            } else if fullscreen {
+                VStack(spacing: 20) {
+                    switch state.phase {
+                    case .alerting: alertingBody
+                    case .waiting: waitingBody
+                    case .breaking: breakBody
+                    default: EmptyView()
                     }
-                    .padding(40)
-                } else {
-                    VStack(spacing: 0) {
-                        switch state.phase {
-                        case .alerting: floatingAlertingBody
-                        case .waiting: floatingWaitingBody
-                        case .breaking: floatingBreakBody
-                        default: EmptyView()
-                        }
-                    }
-                    .frame(width: 240)
                 }
-
-                // 最小化按钮——覆盖在顶层保证可点击
-                if state.phase == .breaking {
-                    hideButton
-                        .scaleEffect(fullscreen ? 1.4 : 1.0)
-                        .padding(fullscreen ? 24 : 10)
+                .padding(40)
+                .overlay(alignment: .topTrailing) {
+                    if state.phase == .breaking {
+                        hideButton
+                            .scaleEffect(1.4)
+                            .padding(24)
+                    }
+                }
+            } else {
+                VStack(spacing: 0) {
+                    switch state.phase {
+                    case .alerting: floatingAlertingBody
+                    case .waiting: floatingWaitingBody
+                    case .breaking: floatingBreakBody
+                    default: EmptyView()
+                    }
+                }
+                .frame(width: 240)
+                .overlay(alignment: .topTrailing) {
+                    if state.phase == .breaking {
+                        hideButton
+                            .padding(10)
+                    }
                 }
             }
         }
