@@ -79,8 +79,6 @@ struct L {
     static var startWorkingNow: String { isZh ? "开始工作" : "Start Working" }
 
     static var hide: String { isZh ? "隐藏" : "Hide" }
-    static var showBreakWindow: String { isZh ? "显示休息窗口" : "Show Break Window" }
-    static var breakWindowHiddenHint: String { isZh ? "窗口已隐藏，倒计时结束后将重新弹出" : "Window hidden, will reappear when break ends" }
 
     // MARK: - Alerts
     static var healthCheckIn: String { isZh ? "健康打卡" : "Health Check-in" }
