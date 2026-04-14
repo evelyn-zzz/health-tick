@@ -13,6 +13,7 @@ struct MenuView: View {
         case .alerting:
             return true
         case .breaking, .waiting:
+            if state.isBreakWindowHidden { return false }
             // Only show break card in menu when break position is menuWindow;
             // for floating/fullscreen, the overlay handles the break UI.
             return state.config.breakPosition == .menuWindow
@@ -35,6 +36,34 @@ struct MenuView: View {
 
                 // Stats — re-renders only when stats change (infrequent)
                 MenuStatsContent()
+
+                if state.phase == .breaking && state.isBreakWindowHidden {
+                    Divider().padding(.horizontal, 4)
+                    
+                    VStack(spacing: 6) {
+                        Text(L.breakWindowHiddenHint)
+                            .font(.system(size: 10))
+                            .foregroundStyle(.secondary)
+                        
+                        Button {
+                            state.toggleBreakWindowHidden()
+                        } label: {
+                            HStack {
+                                Image(systemName: "eye")
+                                Text(L.showBreakWindow)
+                            }
+                            .font(.system(size: 12, weight: .medium))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                            .background(Color.green.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+                            .foregroundStyle(.green)
+                        }
+                        .buttonStyle(.borderless)
+                        .handCursor()
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.top, 4)
+                }
 
                 Divider().padding(.horizontal, 4)
 

@@ -263,10 +263,8 @@ final class AppState {
     var currentStreak: Int = 0
     var maxStreak: Int = 0
     var breakWarning: String = ""
-    var breakSkipCount: Int = 0
     var isPreview: Bool = false
-    let breakSkipNeeded = 3
-    var lastSkipClickTime: Date?
+    var isBreakWindowHidden: Bool = false
     var weekData: [(String, Int)] = []
     var totalCount: Int = 0
     var todayWorkMinutes: Int = 0
@@ -440,6 +438,11 @@ final class AppState {
         }
     }
 
+    func toggleBreakWindowHidden() {
+        isBreakWindowHidden.toggle()
+        overlayManager.setWindowsVisible(!isBreakWindowHidden)
+    }
+
     // MARK: - Timer
 
     func startWork() {
@@ -547,7 +550,7 @@ final class AppState {
         timer?.invalidate()  // Stop work timer; overlay manager handles break countdown
         alertingStartDate = nil
         breakWarning = ""
-        breakSkipCount = 0
+        isBreakWindowHidden = false
         breakStartDate = Date()
         currentBreakActivity = breakActivities.randomElement()
         currentReminder = config.reminders.randomElement()
@@ -574,6 +577,8 @@ final class AppState {
         phase = .waiting
         remainingSeconds = 0
         breakWarning = ""
+        isBreakWindowHidden = false
+        overlayManager.setWindowsVisible(true)
         // Only pin menu bar for menuWindow mode; other modes have their own windows
         if config.breakPosition == .menuWindow {
             overlayManager.pinForAlert()
@@ -943,34 +948,34 @@ final class AppState {
         NSSound(named: config.breakDetectSoundName)?.play()
     }
 
-    func skipBreakClicked() {
-        lastSkipClickTime = Date()
-        breakSkipCount += 1
-        if breakSkipCount >= breakSkipNeeded {
-            forceEndBreak()
-        }
-    }
-
-    func forceEndBreak() {
-        guard phase == .breaking else { return }
+    func skipBreak() {
+        // Support skipping from alerting (reminder) or breaking (in-progress) phase
+        guard phase == .alerting || phase == .breaking else { return }
+        
         timer?.invalidate()
         alertRepeatTimer?.invalidate()
         alertRepeatTimer = nil
         breakWarning = ""
         overlayManager.hide()
 
-        let actualSeconds: Int?
-        if let start = breakStartDate {
-            actualSeconds = Int(Date().timeIntervalSince(start))
-        } else {
-            actualSeconds = nil
-        }
         if let sid = currentSessionId {
-            db.endSessionBreak(sessionId: sid, actualSeconds: actualSeconds, skipped: true)
+            if phase == .alerting {
+                // Not even started break, record zero seconds and skipped
+                db.endWork(sessionId: sid)
+                db.endSessionBreak(sessionId: sid, actualSeconds: 0, skipped: true)
+            } else {
+                // In break, record elapsed seconds but mark as skipped
+                let actualSeconds: Int? = breakStartDate.map { Int(Date().timeIntervalSince($0)) }
+                db.endSessionBreak(sessionId: sid, actualSeconds: actualSeconds, skipped: true)
+            }
         }
+        
         todaySkipCount = db.todaySkipCount()
-
         startWork()
+    }
+
+    func forceEndBreak() {
+        skipBreak()
     }
 
     // MARK: - Day Change
@@ -995,7 +1000,7 @@ final class AppState {
         pausedPhase = nil
         autoQuietPaused = false
         breakWarning = ""
-        breakSkipCount = 0
+        isBreakWindowHidden = false
         completedCycles = 0
         currentBreakActivity = nil
         currentReminder = nil
@@ -1175,6 +1180,8 @@ final class AppState {
             isInQuietHours = true
             // Only .paused can reach here now (midCycle guarded above)
             autoQuietPaused = true
+            isBreakWindowHidden = false
+            overlayManager.setWindowsVisible(true)
             startQuietCountdown()
         } else if !shouldPause && isInQuietHours {
             isInQuietHours = false

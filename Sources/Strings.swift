@@ -75,9 +75,12 @@ struct L {
     static var breakLeaveMsg: String { isZh ? "请离开电脑，起来走走" : "Please leave the computer and take a walk" }
     static var breakFloatMsg: String { isZh ? "起来走走，休息一下" : "Stand up and take a break" }
     static var breakDetectedPause: String { isZh ? "检测到操作，倒计时已暂停" : "Activity detected, countdown paused" }
-    static func skipButton(_ current: Int, _ total: Int) -> String {
-        isZh ? "跳过 (\(current)/\(total))" : "Skip (\(current)/\(total))"
-    }
+    static var skipAction: String { isZh ? "跳过" : "Skip" }
+    static var startWorkingNow: String { isZh ? "开始工作" : "Start Working" }
+
+    static var hide: String { isZh ? "隐藏" : "Hide" }
+    static var showBreakWindow: String { isZh ? "显示休息窗口" : "Show Break Window" }
+    static var breakWindowHiddenHint: String { isZh ? "窗口已隐藏，倒计时结束后将重新弹出" : "Window hidden, will reappear when break ends" }
 
     // MARK: - Alerts
     static var healthCheckIn: String { isZh ? "健康打卡" : "Health Check-in" }
@@ -349,8 +352,8 @@ struct L {
             : "**Activity Detection**: If you continue using the computer during break (idle < 3 sec), the countdown pauses to ensure you truly rest."
     }
     static var helpBreakWindowSkip: String {
-        isZh ? "**强制跳过**：连续快速点击休息窗口 3 次可以强制关闭（紧急情况使用）。"
-            : "**Force Skip**: Click the skip button 3 times quickly to force-close the break window (for emergencies)."
+        isZh ? "**开始工作**：点击休息窗口底部的“开始工作”按钮可提前结束休息并开始下一轮工作（已有的休息时间会被记录）。"
+            : "**Start Working**: Click the 'Start Working' button at the bottom to end break early and start the next round (rest time is recorded)."
     }
     static var helpBadgeSystem: String { isZh ? "徽章激励体系" : "Badge System" }
     static var helpBadgeSystemDesc: String {

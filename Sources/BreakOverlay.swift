@@ -29,27 +29,54 @@ struct BreakCardView: View {
     }
 
     var body: some View {
-        if fullscreen {
-            VStack(spacing: 20) {
-                switch state.phase {
-                case .alerting: alertingBody
-                case .waiting: waitingBody
-                case .breaking: breakBody
-                default: EmptyView()
+        ZStack(alignment: .topTrailing) {
+            if fullscreen {
+                VStack(spacing: 20) {
+                    switch state.phase {
+                    case .alerting: alertingBody
+                    case .waiting: waitingBody
+                    case .breaking: breakBody
+                    default: EmptyView()
+                    }
+                }
+                .padding(40)
+                
+                if state.phase == .breaking {
+                    hideButton
+                        .scaleEffect(1.4)
+                        .padding(24)
+                }
+            } else {
+                VStack(spacing: 0) {
+                    switch state.phase {
+                    case .alerting: floatingAlertingBody
+                    case .waiting: floatingWaitingBody
+                    case .breaking: floatingBreakBody
+                    default: EmptyView()
+                    }
+                }
+                .frame(width: 240)
+                
+                if state.phase == .breaking {
+                    hideButton
+                        .padding(10)
                 }
             }
-            .padding(40)
-        } else {
-            VStack(spacing: 0) {
-                switch state.phase {
-                case .alerting: floatingAlertingBody
-                case .waiting: floatingWaitingBody
-                case .breaking: floatingBreakBody
-                default: EmptyView()
-                }
-            }
-            .frame(width: 240)
         }
+    }
+
+    private var hideButton: some View {
+        Button {
+            state.toggleBreakWindowHidden()
+        } label: {
+            Image(systemName: "eye.slash")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(.secondary)
+                .frame(width: 22, height: 22)
+                .background(.ultraThinMaterial, in: Circle())
+        }
+        .buttonStyle(.borderless)
+        .help(L.hide)
     }
 
     // MARK: - Floating: Alerting
@@ -105,7 +132,17 @@ struct BreakCardView: View {
                 .padding(.top, 6)
         }
 
-        Spacer().frame(height: 24)
+        Button {
+            state.skipBreak()
+        } label: {
+            Text(L.skipAction)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.secondary.opacity(0.6))
+                .padding(.top, 4)
+        }
+        .buttonStyle(.borderless)
+
+        Spacer().frame(height: 20)
     }
 
     // MARK: - Floating: Break
@@ -172,9 +209,9 @@ struct BreakCardView: View {
         .padding(.top, 14)
 
         Button {
-            state.skipBreakClicked()
+            state.confirmReturn()
         } label: {
-            Text(L.skipButton(state.breakSkipCount, state.breakSkipNeeded))
+            Text(L.startWorkingNow)
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 14)
@@ -288,6 +325,16 @@ struct BreakCardView: View {
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary.opacity(0.6))
         }
+
+        Button {
+            state.skipBreak()
+        } label: {
+            Text(L.skipAction)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(.white.opacity(0.4))
+                .padding(.top, 8)
+        }
+        .buttonStyle(.borderless)
     }
 
     // MARK: - Fullscreen: Break
@@ -348,9 +395,9 @@ struct BreakCardView: View {
         }
 
         Button {
-            state.skipBreakClicked()
+            state.confirmReturn()
         } label: {
-            Text(L.skipButton(state.breakSkipCount, state.breakSkipNeeded))
+            Text(L.startWorkingNow)
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(.white.opacity(0.4))
                 .padding(.horizontal, 20)
@@ -512,6 +559,16 @@ final class BreakOverlayManager {
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
             self?.pinMenuBarExtra()
+        }
+    }
+
+    func setWindowsVisible(_ visible: Bool) {
+        for w in windows {
+            if visible {
+                w.makeKeyAndOrderFront(nil)
+            } else {
+                w.orderOut(nil)
+            }
         }
     }
 
