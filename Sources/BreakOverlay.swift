@@ -30,39 +30,65 @@ struct BreakCardView: View {
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
-            if fullscreen {
-                VStack(spacing: 20) {
-                    switch state.phase {
-                    case .alerting: alertingBody
-                    case .waiting: waitingBody
-                    case .breaking: breakBody
-                    default: EmptyView()
-                    }
-                }
-                .padding(40)
-                
-                if state.phase == .breaking {
-                    hideButton
-                        .scaleEffect(1.4)
-                        .padding(24)
-                }
+            if state.isBreakWindowHidden {
+                minimizedBody
             } else {
-                VStack(spacing: 0) {
-                    switch state.phase {
-                    case .alerting: floatingAlertingBody
-                    case .waiting: floatingWaitingBody
-                    case .breaking: floatingBreakBody
-                    default: EmptyView()
+                if fullscreen {
+                    VStack(spacing: 20) {
+                        switch state.phase {
+                        case .alerting: alertingBody
+                        case .waiting: waitingBody
+                        case .breaking: breakBody
+                        default: EmptyView()
+                        }
                     }
-                }
-                .frame(width: 240)
-                
-                if state.phase == .breaking {
-                    hideButton
-                        .padding(10)
+                    .padding(40)
+                    
+                    if state.phase == .breaking {
+                        hideButton
+                            .scaleEffect(1.4)
+                            .padding(24)
+                    }
+                } else {
+                    VStack(spacing: 0) {
+                        switch state.phase {
+                        case .alerting: floatingAlertingBody
+                        case .waiting: floatingWaitingBody
+                        case .breaking: floatingBreakBody
+                        default: EmptyView()
+                        }
+                    }
+                    .frame(width: 240)
+                    
+                    if state.phase == .breaking {
+                        hideButton
+                            .padding(10)
+                    }
                 }
             }
         }
+    }
+
+    private var minimizedBody: some View {
+        Button {
+            state.toggleBreakWindowHidden()
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "timer")
+                    .font(.system(size: 10))
+                Text(state.formattedTime)
+                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                Image(systemName: "chevron.right.2")
+                    .font(.system(size: 8))
+            }
+            .foregroundStyle(.primary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(.regularMaterial, in: Capsule())
+            .overlay(Capsule().stroke(.quaternary, lineWidth: 0.5))
+            .shadow(color: .black.opacity(0.1), radius: 4, y: 2)
+        }
+        .buttonStyle(.plain)
     }
 
     private var hideButton: some View {
@@ -563,12 +589,10 @@ final class BreakOverlayManager {
     }
 
     func setWindowsVisible(_ visible: Bool) {
+        // Now minimized mode needs the windows to be visible too.
+        // We just ensure they are front.
         for w in windows {
-            if visible {
-                w.makeKeyAndOrderFront(nil)
-            } else {
-                w.orderOut(nil)
-            }
+            w.makeKeyAndOrderFront(nil)
         }
     }
 
