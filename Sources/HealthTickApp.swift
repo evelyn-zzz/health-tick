@@ -135,7 +135,7 @@ struct MenuBarLabel: View {
                     .animation(.easeInOut(duration: 0.6), value: state.walkFrame)
             } else if (state.phase == .breaking || state.phase == .alerting) && state.phase != .paused {
                 Image(systemName: phaseSystemImage)
-                    .scaleEffect(state.walkFrame % 2 == 0 ? 1.05 : 0.95)
+                    .scaleEffect(state.walkFrame % 2 == 0 ? 1.08 : 0.92)
                     .animation(.easeInOut(duration: 0.6), value: state.walkFrame)
             } else {
                 Image(systemName: phaseSystemImage)
