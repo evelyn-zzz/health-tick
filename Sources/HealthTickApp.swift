@@ -125,10 +125,29 @@ struct HealthTickApp: App {
 
 struct MenuBarLabel: View {
     @Environment(AppState.self) var state
+    @State private var walkFrame: Int = 0
+    private let timer = Timer.publish(every: 0.6, on: .main, in: .common).autoconnect()
     private static let isDev = Bundle.main.bundleIdentifier?.hasSuffix(".dev") == true
 
     var body: some View {
-        Image(systemName: phaseSystemImage)
+        Group {
+            if state.phase == .working && state.phase != .paused {
+                Image(systemName: phaseSystemImage)
+                    .rotationEffect(.degrees(walkFrame % 2 == 0 ? -9 : 9))
+                    .animation(.easeInOut(duration: 0.6), value: walkFrame)
+            } else if (state.phase == .breaking || state.phase == .alerting) && state.phase != .paused {
+                Image(systemName: phaseSystemImage)
+                    .scaleEffect(walkFrame % 2 == 0 ? 1.05 : 0.95)
+                    .animation(.easeInOut(duration: 0.6), value: walkFrame)
+            } else {
+                Image(systemName: phaseSystemImage)
+            }
+        }
+        .onReceive(timer) { _ in
+            if state.phase != .paused && state.phase != .waiting {
+                walkFrame += 1
+            }
+        }
     }
 
     private var phaseSystemImage: String {
