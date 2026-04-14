@@ -498,22 +498,36 @@ private class KeyablePanel: NSPanel {
 private class AutoResizingHostingView<Content: View>: NSHostingView<Content> {
     override func layout() {
         super.layout()
-        guard let window else { return }
+        guard let window, let screen = window.screen else { return }
         let fitted = fittingSize
         let fw = ceil(fitted.width)
         let fh = ceil(fitted.height)
         let cur = window.frame.size
         
-        // 增加容差判断，防止亚像素计算导致的抖动
         guard abs(cur.width - fw) > 0.5 || abs(cur.height - fh) > 0.5 else { return }
         
-        // 关键修复：异步执行窗口大小调整，避免 Layout Loop 导致主线程卡死
         DispatchQueue.main.async {
-            guard let win = self.window else { return }
+            guard let win = self.window, let screen = win.screen else { return }
+            let position = (NSApp.delegate as? AppDelegate)?.state.config.breakPosition ?? .topRight
+            let vis = screen.visibleFrame
             var frame = win.frame
-            frame.origin.y += cur.height - fh
+            
+            // 保持右上角/左上角/中心锚点固定
+            switch position {
+            case .topRight:
+                frame.origin.x += (cur.width - fw)
+                frame.origin.y += (cur.height - fh)
+            case .topLeft:
+                frame.origin.y += (cur.height - fh)
+            case .center:
+                frame.origin.x += (cur.width - fw) / 2
+                frame.origin.y += (cur.height - fh) / 2
+            default:
+                frame.origin.y += (cur.height - fh)
+            }
+            
             frame.size = NSSize(width: fw, height: fh)
-            win.setFrame(frame, display: true, animate: false)
+            win.setFrame(frame, display: true, animate: true)
         }
     }
 }
