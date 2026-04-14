@@ -73,8 +73,8 @@ struct BreakCardView: View {
         Button {
             state.toggleBreakWindowHidden()
         } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "timer")
+            HStack(spacing: 12) {
+                Image(systemName: "cup.and.saucer.fill")
                     .font(.system(size: 14))
                 Text(state.formattedTime)
                     .font(.system(size: 18, weight: .bold, design: .monospaced))
