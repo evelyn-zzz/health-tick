@@ -123,68 +123,31 @@ struct HealthTickApp: App {
 
 }
 
-struct MenuBarLabel: View {
-    @Environment(AppState.self) var state
-    private static let isDev = Bundle.main.bundleIdentifier?.hasSuffix(".dev") == true
+    struct MenuBarLabel: View {
+        @Environment(AppState.self) var state
+        private static let isDev = Bundle.main.bundleIdentifier?.hasSuffix(".dev") == true
 
-    var body: some View {
-        if let nsImage = getAnimatedImage() {
-            Image(nsImage: nsImage)
-        } else {
+        var body: some View {
             Image(systemName: phaseSystemImage)
         }
-    }
 
-    /// 核心修复：手动绘制旋转后的图像以绕开系统对菜单栏动效的拦截
-    private func getAnimatedImage() -> NSImage? {
-        let name = phaseSystemImage
-        let config = NSImage.SymbolConfiguration(pointSize: 15, weight: .medium)
-        guard let base = NSImage(systemSymbolName: name, accessibilityDescription: nil)?
-            .withSymbolConfiguration(config) else { return nil }
-
-        var angle: CGFloat = 0
-        var scale: CGFloat = 1.0
-
-        if state.phase == .working && state.phase != .paused {
-            angle = (state.walkFrame % 2 == 0) ? -10 : 10
-        } else if (state.phase == .breaking || state.phase == .alerting) && state.phase != .paused {
-            scale = (state.walkFrame % 2 == 0) ? 1.15 : 0.85
-        } else {
-            return base // 静态直接返回
-        }
-
-        let size = NSSize(width: 22, height: 22)
-        let rotated = NSImage(size: size)
-        rotated.lockFocus()
-        if let context = NSGraphicsContext.current?.cgContext {
-            context.translateBy(x: size.width/2, y: size.height/2)
-            if angle != 0 { context.rotate(by: angle * .pi / 180) }
-            if scale != 1.0 { context.scaleBy(x: scale, y: scale) }
-            let rect = NSRect(x: -base.size.width/2, y: -base.size.height/2, width: base.size.width, height: base.size.height)
-            base.draw(in: rect)
-        }
-        rotated.unlockFocus()
-        rotated.isTemplate = true
-        return rotated
-    }
-
-    private var phaseSystemImage: String {
-        if Self.isDev {
+        private var phaseSystemImage: String {
+            if Self.isDev {
+                switch state.phase {
+                case .working: return "figure.walk.diamond"
+                case .alerting, .breaking: return "cup.and.saucer"
+                case .waiting: return "hand.raised"
+                case .paused: return "pause.circle.fill"
+                }
+            }
             switch state.phase {
-            case .working: return "figure.walk.diamond"
-            case .alerting, .breaking: return "cup.and.saucer"
-            case .waiting: return "hand.raised"
-            case .paused: return "pause.circle.fill"
+            case .working: return "figure.walk"
+            case .alerting, .breaking: return "cup.and.saucer.fill"
+            case .waiting: return "hand.raised.fill"
+            case .paused: return "pause.circle"
             }
         }
-        switch state.phase {
-        case .working: return "figure.walk"
-        case .alerting, .breaking: return "cup.and.saucer.fill"
-        case .waiting: return "hand.raised.fill"
-        case .paused: return "pause.circle"
-        }
     }
-}
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     private var observer: Any?

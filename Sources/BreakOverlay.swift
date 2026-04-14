@@ -496,11 +496,9 @@ private class KeyablePanel: NSPanel {
 /// - Auto-resizes its window when SwiftUI content changes
 /// NSHostingView subclass that auto-resizes its window when SwiftUI content changes size.
 private class AutoResizingHostingView<Content: View>: NSHostingView<Content> {
-    var position: BreakPosition = .topRight
-
     override func layout() {
         super.layout()
-        guard let window, let screen = window.screen else { return }
+        guard let window else { return }
         let fitted = fittingSize
         let fw = ceil(fitted.width)
         let fh = ceil(fitted.height)
@@ -509,26 +507,12 @@ private class AutoResizingHostingView<Content: View>: NSHostingView<Content> {
         guard abs(cur.width - fw) > 0.5 || abs(cur.height - fh) > 0.5 else { return }
         
         DispatchQueue.main.async {
-            guard let win = self.window, let screen = win.screen else { return }
-            let vis = screen.visibleFrame
-            var frame = win.frame
-            
-            // 保持对应锚点固定
-            switch self.position {
-            case .topRight:
-                frame.origin.x += (cur.width - fw)
-                frame.origin.y += (cur.height - fh)
-            case .topLeft:
-                frame.origin.y += (cur.height - fh)
-            case .center:
-                frame.origin.x += (cur.width - fw) / 2
-                frame.origin.y += (cur.height - fh) / 2
-            default:
-                frame.origin.y += (cur.height - fh)
-            }
-            
+            var frame = window.frame
             frame.size = NSSize(width: fw, height: fh)
-            win.setFrame(frame, display: true, animate: true)
+            window.setFrame(frame, display: true, animate: false)
+            
+            // 触发重新定位：确保窗口在尺寸变化后依然完美对齐在预设角落
+            NotificationCenter.default.post(name: NSNotification.Name("HealthTickRepositionWindow"), object: window)
         }
     }
 }
@@ -581,12 +565,21 @@ final class BreakOverlayManager {
                 self?.repositionWindows()
             }
         }
-        screenObservers = [wakeObserver, screenObserver]
+
+        let repoObserver = NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("HealthTickRepositionWindow"), object: nil, queue: .main
+        ) { [weak self] note in
+            if let win = note.object as? NSWindow {
+                self?.repositionSpecificWindow(win)
+            }
+        }
+        screenObservers = [wakeObserver, screenObserver, repoObserver]
     }
 
     deinit {
         NSWorkspace.shared.notificationCenter.removeObserver(screenObservers[0])
         NotificationCenter.default.removeObserver(screenObservers[1])
+        NotificationCenter.default.removeObserver(screenObservers[2])
     }
 
     func show(seconds: Int) {
@@ -706,38 +699,36 @@ final class BreakOverlayManager {
     // MARK: - Reposition after screen change / wake
 
     private func repositionWindows() {
-        guard !windows.isEmpty, let position = currentPosition else { return }
-
-        if position == .fullscreen {
-            // Recreate fullscreen panels to match current screen geometry
-            for w in windows { w.orderOut(nil) }
-            windows.removeAll()
-            createFullscreen()
-        } else {
-            // Reposition floating windows within current visibleFrame
-            guard let screen = NSScreen.main else { return }
-            let margin: CGFloat = 20
-            let vis = screen.visibleFrame
-
-            for w in windows {
-                let size = w.frame.size
-                var origin: NSPoint
-                switch position {
-                case .topRight:
-                    origin = NSPoint(x: vis.maxX - size.width - margin,
-                                     y: vis.maxY - size.height - margin)
-                case .topLeft:
-                    origin = NSPoint(x: vis.minX + margin,
-                                     y: vis.maxY - size.height - margin)
-                case .center:
-                    origin = NSPoint(x: vis.midX - size.width / 2,
-                                     y: vis.midY - size.height / 2)
-                case .fullscreen, .menuWindow:
-                    continue
-                }
-                w.setFrameOrigin(origin)
-            }
+        guard !windows.isEmpty, let _ = currentPosition else { return }
+        for w in windows {
+            repositionSpecificWindow(w)
         }
+    }
+
+    func repositionSpecificWindow(_ w: NSWindow) {
+        guard let position = currentPosition, position != .fullscreen, position != .menuWindow else { return }
+        guard let screen = w.screen ?? NSScreen.main else { return }
+        
+        let margin: CGFloat = 20
+        let vis = screen.visibleFrame
+        let size = w.frame.size
+        
+        var origin: NSPoint
+        switch position {
+        case .topRight:
+            origin = NSPoint(x: vis.maxX - size.width - margin,
+                             y: vis.maxY - size.height - margin)
+        case .topLeft:
+            origin = NSPoint(x: vis.minX + margin,
+                             y: vis.maxY - size.height - margin)
+        case .center:
+            origin = NSPoint(x: vis.midX - size.width / 2,
+                             y: vis.midY - size.height / 2)
+        default:
+            return
+        }
+        
+        w.setFrameOrigin(origin)
     }
 
     // MARK: - Menu window pinning
@@ -836,7 +827,6 @@ final class BreakOverlayManager {
             .environment(state)
 
         let hostingView = AutoResizingHostingView(rootView: cardView)
-        hostingView.position = position
         let fitted = hostingView.fittingSize
         let pw = ceil(fitted.width)
         let ph = ceil(fitted.height)
