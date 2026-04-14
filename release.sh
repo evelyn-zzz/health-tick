@@ -85,6 +85,18 @@ done
 
 # Git commit, tag, push
 echo "[4/6] Pushing tag ${TAG}..."
+
+# Determine changelog
+LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+if [ "$2" != "" ]; then
+    CHANGELOG="- $2"
+elif [ -n "$LAST_TAG" ]; then
+    # Get logs since last tag, exclude "bump version" commits
+    CHANGELOG=$(git log ${LAST_TAG}..HEAD --oneline --pretty=format:"- %s" | grep -v "chore: bump version" | grep -v "v${CURRENT_VERSION}" || echo "- 修复了已知问题")
+else
+    CHANGELOG="- 初始版本发布"
+fi
+
 git add -A
 git diff --cached --quiet || git commit -m "${TAG}"
 git tag "$TAG" 2>/dev/null || true
@@ -96,7 +108,7 @@ echo "[5/6] Publishing release to GitHub ${REPO}..."
 RELEASE_NOTES="## HealthTick ${TAG}
 
 ### 更新内容
-- 修复了已知问题
+${CHANGELOG}
 
 ### 下载
 - **Apple Silicon (M1/M2/M3/M4)**: \`HealthTick-${TAG}-Apple-Silicon.dmg\`
