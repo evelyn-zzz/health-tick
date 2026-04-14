@@ -496,6 +496,8 @@ private class KeyablePanel: NSPanel {
 /// - Auto-resizes its window when SwiftUI content changes
 /// NSHostingView subclass that auto-resizes its window when SwiftUI content changes size.
 private class AutoResizingHostingView<Content: View>: NSHostingView<Content> {
+    var position: BreakPosition = .topRight
+
     override func layout() {
         super.layout()
         guard let window, let screen = window.screen else { return }
@@ -508,12 +510,11 @@ private class AutoResizingHostingView<Content: View>: NSHostingView<Content> {
         
         DispatchQueue.main.async {
             guard let win = self.window, let screen = win.screen else { return }
-            let position = (NSApp.delegate as? AppDelegate)?.state.config.breakPosition ?? .topRight
             let vis = screen.visibleFrame
             var frame = win.frame
             
-            // 保持右上角/左上角/中心锚点固定
-            switch position {
+            // 保持对应锚点固定
+            switch self.position {
             case .topRight:
                 frame.origin.x += (cur.width - fw)
                 frame.origin.y += (cur.height - fh)
@@ -835,6 +836,7 @@ final class BreakOverlayManager {
             .environment(state)
 
         let hostingView = AutoResizingHostingView(rootView: cardView)
+        hostingView.position = position
         let fitted = hostingView.fittingSize
         let pw = ceil(fitted.width)
         let ph = ceil(fitted.height)
