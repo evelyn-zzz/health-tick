@@ -73,20 +73,20 @@ struct BreakCardView: View {
         Button {
             state.toggleBreakWindowHidden()
         } label: {
-            HStack(spacing: 6) {
+            HStack(spacing: 10) {
                 Image(systemName: "timer")
-                    .font(.system(size: 10))
+                    .font(.system(size: 14))
                 Text(state.formattedTime)
-                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                    .font(.system(size: 18, weight: .bold, design: .monospaced))
                 Image(systemName: "chevron.right.2")
-                    .font(.system(size: 8))
+                    .font(.system(size: 11))
             }
             .foregroundStyle(.primary)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
             .background(.regularMaterial, in: Capsule())
             .overlay(Capsule().stroke(.quaternary, lineWidth: 0.5))
-            .shadow(color: .black.opacity(0.1), radius: 4, y: 2)
+            .shadow(color: .black.opacity(0.15), radius: 6, y: 3)
         }
         .buttonStyle(.plain)
     }
