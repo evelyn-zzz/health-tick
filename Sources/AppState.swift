@@ -271,6 +271,7 @@ final class AppState {
     var todayBreakMinutes: Int = 0
     var weekWorkData: [(String, Int)] = []
     var isInQuietHours: Bool = false
+    var walkFrame: Int = 0
 
     /// Which quiet-hour reasons the user has chosen to skip (via "continue working").
     /// When a new reason appears that isn't in this set, quiet hours will still trigger.
@@ -304,6 +305,7 @@ final class AppState {
     var overlayManager = BreakOverlayManager()
 
     private var autoSaveTimer: Timer?
+    private var animationTimer: Timer?
     private var restartPromptTimer: Timer?
     private var lastSavedConfig: AppConfig?
     private var localMonitor: Any?
@@ -337,6 +339,7 @@ final class AppState {
         refreshStats()
 
         startQuietCheckTimer()
+        startAnimationTimer()
         setupShortcutMonitors()
 
         // Delay so onChange in HealthTickApp can catch the transition
@@ -1114,6 +1117,15 @@ final class AppState {
         DispatchQueue.main.asyncAfter(deadline: .now() + 8) { [weak self] in
             self?.workEndReminderPanel?.close()
             self?.workEndReminderPanel = nil
+        }
+    }
+
+    private func startAnimationTimer() {
+        animationTimer?.invalidate()
+        animationTimer = Timer.scheduledTimer(withTimeInterval: 0.6, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.walkFrame += 1
+            }
         }
     }
 
