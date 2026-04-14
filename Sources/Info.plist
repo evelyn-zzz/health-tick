@@ -11,8 +11,8 @@
 	<key>CFBundleName</key>
 	<string>HealthTick</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.6.38</string>
+	<string>1.6.39</string>
 	<key>CFBundleVersion</key>
-	<string>90</string>
+	<string>91</string>
 </dict>
 </plist>
