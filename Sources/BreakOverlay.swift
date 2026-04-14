@@ -33,6 +33,7 @@ struct BreakCardView: View {
             if state.isBreakWindowHidden {
                 minimizedBody
             } else {
+                // 内容区域
                 if fullscreen {
                     VStack(spacing: 20) {
                         switch state.phase {
@@ -43,12 +44,6 @@ struct BreakCardView: View {
                         }
                     }
                     .padding(40)
-                    
-                    if state.phase == .breaking {
-                        hideButton
-                            .scaleEffect(1.4)
-                            .padding(24)
-                    }
                 } else {
                     VStack(spacing: 0) {
                         switch state.phase {
@@ -59,11 +54,13 @@ struct BreakCardView: View {
                         }
                     }
                     .frame(width: 240)
-                    
-                    if state.phase == .breaking {
-                        hideButton
-                            .padding(10)
-                    }
+                }
+
+                // 最小化按钮——覆盖在顶层保证可点击
+                if state.phase == .breaking {
+                    hideButton
+                        .scaleEffect(fullscreen ? 1.4 : 1.0)
+                        .padding(fullscreen ? 24 : 10)
                 }
             }
         }
@@ -78,7 +75,7 @@ struct BreakCardView: View {
                     .font(.system(size: 14))
                 Text(state.formattedTime)
                     .font(.system(size: 18, weight: .bold, design: .monospaced))
-                Image(systemName: "chevron.right.2")
+                Image(systemName: "arrow.up.left.and.arrow.down.right")
                     .font(.system(size: 11))
             }
             .foregroundStyle(.primary)
@@ -95,7 +92,7 @@ struct BreakCardView: View {
         Button {
             state.toggleBreakWindowHidden()
         } label: {
-            Image(systemName: "eye.slash")
+            Image(systemName: "arrow.down.right.and.arrow.up.left")
                 .font(.system(size: 10, weight: .bold))
                 .foregroundStyle(.secondary)
                 .frame(width: 22, height: 22)
