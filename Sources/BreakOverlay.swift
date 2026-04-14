@@ -29,37 +29,38 @@ struct BreakCardView: View {
     }
 
     var body: some View {
-        Group {
+        ZStack(alignment: .topTrailing) {
             if state.isBreakWindowHidden {
                 minimizedBody
-            } else if fullscreen {
-                VStack(spacing: 20) {
-                    switch state.phase {
-                    case .alerting: alertingBody
-                    case .waiting: waitingBody
-                    case .breaking: breakBody
-                    default: EmptyView()
+            } else {
+                // 主内容区
+                if fullscreen {
+                    VStack(spacing: 20) {
+                        switch state.phase {
+                        case .alerting: alertingBody
+                        case .waiting: waitingBody
+                        case .breaking: breakBody
+                        default: EmptyView()
+                        }
                     }
-                }
-                .padding(40)
-                .overlay(alignment: .topTrailing) {
+                    .padding(40)
+                    
                     if state.phase == .breaking {
                         hideButton
                             .scaleEffect(1.4)
                             .padding(24)
                     }
-                }
-            } else {
-                VStack(spacing: 0) {
-                    switch state.phase {
-                    case .alerting: floatingAlertingBody
-                    case .waiting: floatingWaitingBody
-                    case .breaking: floatingBreakBody
-                    default: EmptyView()
+                } else {
+                    VStack(spacing: 0) {
+                        switch state.phase {
+                        case .alerting: floatingAlertingBody
+                        case .waiting: floatingWaitingBody
+                        case .breaking: floatingBreakBody
+                        default: EmptyView()
+                        }
                     }
-                }
-                .frame(width: 240)
-                .overlay(alignment: .topTrailing) {
+                    .frame(width: 240)
+                    
                     if state.phase == .breaking {
                         hideButton
                             .padding(10)
@@ -67,6 +68,7 @@ struct BreakCardView: View {
                 }
             }
         }
+        .contentShape(Rectangle())
     }
 
     private var minimizedBody: some View {
@@ -79,7 +81,7 @@ struct BreakCardView: View {
                 Text(state.formattedTime)
                     .font(.system(size: 18, weight: .bold, design: .monospaced))
                 Image(systemName: "arrow.up.left.and.arrow.down.right")
-                    .font(.system(size: 11))
+                    .font(.system(size: 11, weight: .bold))
             }
             .foregroundStyle(.primary)
             .padding(.horizontal, 16)
@@ -95,8 +97,8 @@ struct BreakCardView: View {
         Button {
             state.toggleBreakWindowHidden()
         } label: {
-            Image(systemName: "arrow.down.right.and.arrow.up.left")
-                .font(.system(size: 10, weight: .bold))
+            Image(systemName: "minus.circle.fill")
+                .font(.system(size: 14, weight: .bold))
                 .foregroundStyle(.secondary)
                 .frame(width: 22, height: 22)
                 .background(.ultraThinMaterial, in: Circle())
@@ -501,11 +503,18 @@ private class AutoResizingHostingView<Content: View>: NSHostingView<Content> {
         let fw = ceil(fitted.width)
         let fh = ceil(fitted.height)
         let cur = window.frame.size
-        guard abs(cur.width - fw) > 1 || abs(cur.height - fh) > 1 else { return }
-        var frame = window.frame
-        frame.origin.y += cur.height - fh
-        frame.size = NSSize(width: fw, height: fh)
-        window.setFrame(frame, display: true, animate: false)
+        
+        // 增加容差判断，防止亚像素计算导致的抖动
+        guard abs(cur.width - fw) > 0.5 || abs(cur.height - fh) > 0.5 else { return }
+        
+        // 关键修复：异步执行窗口大小调整，避免 Layout Loop 导致主线程卡死
+        DispatchQueue.main.async {
+            guard let win = self.window else { return }
+            var frame = win.frame
+            frame.origin.y += cur.height - fh
+            frame.size = NSSize(width: fw, height: fh)
+            win.setFrame(frame, display: true, animate: false)
+        }
     }
 }
 
