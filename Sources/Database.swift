@@ -99,8 +99,10 @@ final class Database {
         var stmt: OpaquePointer?
         if sqlite3_prepare_v2(db, "SELECT key, value FROM config", -1, &stmt, nil) == SQLITE_OK {
             while sqlite3_step(stmt) == SQLITE_ROW {
-                let key = String(cString: sqlite3_column_text(stmt, 0))
-                let value = String(cString: sqlite3_column_text(stmt, 1))
+                guard let keyPtr = sqlite3_column_text(stmt, 0),
+                      let valPtr = sqlite3_column_text(stmt, 1) else { continue }
+                let key = String(cString: keyPtr)
+                let value = String(cString: valPtr)
                 switch key {
                 case "work_minutes": config.workMinutes = Int(value) ?? 60
                 case "break_minutes":
@@ -239,7 +241,8 @@ final class Database {
         var streak = 0
 
         while sqlite3_step(stmt) == SQLITE_ROW {
-            let dateStr = String(cString: sqlite3_column_text(stmt, 0))
+            guard let datePtr = sqlite3_column_text(stmt, 0) else { continue }
+            let dateStr = String(cString: datePtr)
             let cnt = Int(sqlite3_column_int(stmt, 1))
             let dayGoal = Int(sqlite3_column_int(stmt, 2))
 
@@ -296,7 +299,9 @@ final class Database {
         let sql = "SELECT date, COUNT(*) FROM records WHERE date >= '\(startStr)' GROUP BY date"
         if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
             while sqlite3_step(stmt) == SQLITE_ROW {
-                map[String(cString: sqlite3_column_text(stmt, 0))] = Int(sqlite3_column_int(stmt, 1))
+                if let ds = columnString(stmt, 0) {
+                    map[ds] = Int(sqlite3_column_int(stmt, 1))
+                }
             }
         }
         sqlite3_finalize(stmt)
@@ -325,7 +330,9 @@ final class Database {
         let sql = "SELECT date, COUNT(*) FROM records WHERE date >= '\(startStr)' GROUP BY date"
         if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
             while sqlite3_step(stmt) == SQLITE_ROW {
-                map[String(cString: sqlite3_column_text(stmt, 0))] = Int(sqlite3_column_int(stmt, 1))
+                if let ds = columnString(stmt, 0) {
+                    map[ds] = Int(sqlite3_column_int(stmt, 1))
+                }
             }
         }
         sqlite3_finalize(stmt)
@@ -348,8 +355,9 @@ final class Database {
         let sql = "SELECT date, COUNT(*) FROM records WHERE date >= '\(start)' GROUP BY date"
         if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
             while sqlite3_step(stmt) == SQLITE_ROW {
-                let d = String(cString: sqlite3_column_text(stmt, 0))
-                map[d] = Int(sqlite3_column_int(stmt, 1))
+                if let d = columnString(stmt, 0) {
+                    map[d] = Int(sqlite3_column_int(stmt, 1))
+                }
             }
         }
         sqlite3_finalize(stmt)
@@ -396,7 +404,7 @@ final class Database {
         let fmt = Self.dateFmt()
         let today = Date()
         while sqlite3_step(stmt) == SQLITE_ROW {
-            let dateStr = String(cString: sqlite3_column_text(stmt, 0))
+            guard let dateStr = columnString(stmt, 0) else { continue }
             let cnt = Int(sqlite3_column_int(stmt, 1))
             if cnt >= goal, let d = fmt.date(from: dateStr) {
                 sqlite3_finalize(stmt)
@@ -413,7 +421,7 @@ final class Database {
         var result: [[String: Any]] = []
         if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
             while sqlite3_step(stmt) == SQLITE_ROW {
-                let d = String(cString: sqlite3_column_text(stmt, 0))
+                guard let d = columnString(stmt, 0) else { continue }
                 let c = Int(sqlite3_column_int(stmt, 1))
                 result.append(["date": d, "count": c])
             }
@@ -496,8 +504,9 @@ final class Database {
         let sql = "SELECT date, COUNT(*) FROM records WHERE date >= '\(start)' AND date <= '\(end)' GROUP BY date"
         if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
             while sqlite3_step(stmt) == SQLITE_ROW {
-                let d = String(cString: sqlite3_column_text(stmt, 0))
-                map[d] = Int(sqlite3_column_int(stmt, 1))
+                if let d = columnString(stmt, 0) {
+                    map[d] = Int(sqlite3_column_int(stmt, 1))
+                }
             }
         }
         sqlite3_finalize(stmt)
@@ -518,9 +527,11 @@ final class Database {
         let iso = ISO8601DateFormatter()
         var total = 0
         while sqlite3_step(stmt) == SQLITE_ROW {
-            let startStr = String(cString: sqlite3_column_text(stmt, 0))
+            guard let sPtr = sqlite3_column_text(stmt, 0),
+                  let ePtr = sqlite3_column_text(stmt, 1) else { continue }
+            let startStr = String(cString: sPtr)
             guard let start = iso.date(from: startStr) else { continue }
-            let endStr = String(cString: sqlite3_column_text(stmt, 1))
+            let endStr = String(cString: ePtr)
             let end = iso.date(from: endStr) ?? start
             total += max(0, Int(end.timeIntervalSince(start) / 60))
         }
@@ -535,9 +546,11 @@ final class Database {
         let iso = ISO8601DateFormatter()
         var totalSeconds = 0
         while sqlite3_step(stmt) == SQLITE_ROW {
-            let startStr = String(cString: sqlite3_column_text(stmt, 0))
+            guard let sPtr = sqlite3_column_text(stmt, 0),
+                  let ePtr = sqlite3_column_text(stmt, 1) else { continue }
+            let startStr = String(cString: sPtr)
             guard let start = iso.date(from: startStr) else { continue }
-            let endStr = String(cString: sqlite3_column_text(stmt, 1))
+            let endStr = String(cString: ePtr)
             guard let end = iso.date(from: endStr) else { continue }
             totalSeconds += max(0, Int(end.timeIntervalSince(start)))
         }
@@ -565,11 +578,11 @@ final class Database {
         let sql = "SELECT date, work_start, work_end FROM sessions WHERE date >= '\(startStr)' AND work_end IS NOT NULL"
         if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
             while sqlite3_step(stmt) == SQLITE_ROW {
-                let d = String(cString: sqlite3_column_text(stmt, 0))
-                let startStr = String(cString: sqlite3_column_text(stmt, 1))
-                guard let startDate = iso.date(from: startStr) else { continue }
-                let endStr = String(cString: sqlite3_column_text(stmt, 2))
-                let endDate = iso.date(from: endStr) ?? startDate
+                guard let d = columnString(stmt, 0),
+                      let startS = columnString(stmt, 1) else { continue }
+                guard let startDate = iso.date(from: startS) else { continue }
+                let endS = columnString(stmt, 2)
+                let endDate = endS.flatMap { iso.date(from: $0) } ?? startDate
                 map[d, default: 0] += max(0, Int(endDate.timeIntervalSince(startDate) / 60))
             }
         }
@@ -604,11 +617,11 @@ final class Database {
         let sql = "SELECT date, work_start, work_end FROM sessions WHERE date >= '\(start)' AND work_end IS NOT NULL"
         if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
             while sqlite3_step(stmt) == SQLITE_ROW {
-                let d = String(cString: sqlite3_column_text(stmt, 0))
-                let startStr = String(cString: sqlite3_column_text(stmt, 1))
-                guard let startDate = iso.date(from: startStr) else { continue }
-                let endStr = String(cString: sqlite3_column_text(stmt, 2))
-                let endDate = iso.date(from: endStr) ?? startDate
+                guard let d = columnString(stmt, 0),
+                      let startS = columnString(stmt, 1) else { continue }
+                guard let startDate = iso.date(from: startS) else { continue }
+                let endS = columnString(stmt, 2)
+                let endDate = endS.flatMap { iso.date(from: $0) } ?? startDate
                 map[d, default: 0] += max(0, Int(endDate.timeIntervalSince(startDate) / 60))
             }
         }
@@ -638,7 +651,7 @@ final class Database {
         guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return ("", 0) }
         defer { sqlite3_finalize(stmt) }
         if sqlite3_step(stmt) == SQLITE_ROW {
-            let d = String(cString: sqlite3_column_text(stmt, 0))
+            let d = columnString(stmt, 0) ?? ""
             let c = Int(sqlite3_column_int(stmt, 1))
             return (d, c)
         }
@@ -651,7 +664,7 @@ final class Database {
         guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK else { return nil }
         defer { sqlite3_finalize(stmt) }
         if sqlite3_step(stmt) == SQLITE_ROW {
-            return String(cString: sqlite3_column_text(stmt, 0))
+            return columnString(stmt, 0)
         }
         return nil
     }
@@ -663,7 +676,7 @@ final class Database {
         defer { sqlite3_finalize(stmt) }
         guard sqlite3_prepare_v2(db, "SELECT value FROM config WHERE key = 'onboarding_completed'", -1, &stmt, nil) == SQLITE_OK,
               sqlite3_step(stmt) == SQLITE_ROW else { return false }
-        return String(cString: sqlite3_column_text(stmt, 0)) == "1"
+        return columnString(stmt, 0) == "1"
     }
 
     func setOnboardingCompleted() {
@@ -694,8 +707,8 @@ final class Database {
         let sql = "SELECT key, value FROM config WHERE key IN ('timer_phase', 'timer_target_time', 'timer_paused_remaining')"
         if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
             while sqlite3_step(stmt) == SQLITE_ROW {
-                let key = String(cString: sqlite3_column_text(stmt, 0))
-                let value = String(cString: sqlite3_column_text(stmt, 1))
+                guard let key = columnString(stmt, 0),
+                      let value = columnString(stmt, 1) else { continue }
                 switch key {
                 case "timer_phase": phase = value
                 case "timer_target_time": targetStr = value
@@ -717,7 +730,7 @@ final class Database {
         var stmt: OpaquePointer?
         if sqlite3_prepare_v2(db, "SELECT value FROM config WHERE key = 'timer_save_date'", -1, &stmt, nil) == SQLITE_OK {
             if sqlite3_step(stmt) == SQLITE_ROW {
-                result = String(cString: sqlite3_column_text(stmt, 0))
+                result = columnString(stmt, 0) ?? ""
             }
         }
         sqlite3_finalize(stmt)
@@ -763,9 +776,9 @@ final class Database {
         if sqlite3_prepare_v2(db, "SELECT id, timestamp, date FROM records ORDER BY id", -1, &stmt, nil) == SQLITE_OK {
             while sqlite3_step(stmt) == SQLITE_ROW {
                 let id = Int(sqlite3_column_int64(stmt, 0))
-                let ts = String(cString: sqlite3_column_text(stmt, 1))
-                let date = String(cString: sqlite3_column_text(stmt, 2))
-                records.append(["id": id, "timestamp": ts, "date": date])
+                let ts = columnString(stmt, 1) ?? ""
+                let d = columnString(stmt, 2) ?? ""
+                records.append(["id": id, "timestamp": ts, "date": d])
             }
         }
         sqlite3_finalize(stmt)
@@ -778,21 +791,21 @@ final class Database {
             while sqlite3_step(stmt) == SQLITE_ROW {
                 var s: [String: Any] = [
                     "id": Int(sqlite3_column_int64(stmt, 0)),
-                    "date": String(cString: sqlite3_column_text(stmt, 1)),
-                    "work_start": String(cString: sqlite3_column_text(stmt, 2)),
+                    "date": columnString(stmt, 1) ?? "",
+                    "work_start": columnString(stmt, 2) ?? "",
                     "work_minutes": Int(sqlite3_column_int(stmt, 4)),
                     "break_minutes": Int(sqlite3_column_int(stmt, 7)),
                     "skipped": Int(sqlite3_column_int(stmt, 9)),
                     "daily_goal": Int(sqlite3_column_int(stmt, 10))
                 ]
-                if sqlite3_column_type(stmt, 3) != SQLITE_NULL {
-                    s["work_end"] = String(cString: sqlite3_column_text(stmt, 3))
+                if let sEnd = columnString(stmt, 3) {
+                    s["work_end"] = sEnd
                 }
-                if sqlite3_column_type(stmt, 5) != SQLITE_NULL {
-                    s["break_start"] = String(cString: sqlite3_column_text(stmt, 5))
+                if let bStart = columnString(stmt, 5) {
+                    s["break_start"] = bStart
                 }
-                if sqlite3_column_type(stmt, 6) != SQLITE_NULL {
-                    s["break_end"] = String(cString: sqlite3_column_text(stmt, 6))
+                if let bEnd = columnString(stmt, 6) {
+                    s["break_end"] = bEnd
                 }
                 if sqlite3_column_type(stmt, 8) != SQLITE_NULL {
                     s["break_actual_seconds"] = Int(sqlite3_column_int(stmt, 8))
@@ -809,8 +822,8 @@ final class Database {
         stmt = nil
         if sqlite3_prepare_v2(db, "SELECT key, value FROM config", -1, &stmt, nil) == SQLITE_OK {
             while sqlite3_step(stmt) == SQLITE_ROW {
-                let key = String(cString: sqlite3_column_text(stmt, 0))
-                let value = String(cString: sqlite3_column_text(stmt, 1))
+                guard let key = columnString(stmt, 0),
+                      let value = columnString(stmt, 1) else { continue }
                 if !excludeKeys.contains(key) {
                     config[key] = value
                 }
@@ -830,6 +843,11 @@ final class Database {
         guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK,
               sqlite3_step(stmt) == SQLITE_ROW else { return 0 }
         return Int(sqlite3_column_int(stmt, 0))
+    }
+
+    private func columnString(_ stmt: OpaquePointer?, _ index: Int32) -> String? {
+        guard let ptr = sqlite3_column_text(stmt, index) else { return nil }
+        return String(cString: ptr)
     }
 
     static func todayString() -> String {
@@ -862,12 +880,11 @@ final class Database {
         
         if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
             while sqlite3_step(stmt) == SQLITE_ROW {
-                let workStartStr = String(cString: sqlite3_column_text(stmt, 0))
-                let workEndStr = sqlite3_column_type(stmt, 1) != SQLITE_NULL ? String(cString: sqlite3_column_text(stmt, 1)) : nil
-                let _ = Int(sqlite3_column_int(stmt, 2))
+                guard let workStartStr = columnString(stmt, 0) else { continue }
+                let workEndStr = columnString(stmt, 1)
                 
-                let breakStartStr = sqlite3_column_type(stmt, 3) != SQLITE_NULL ? String(cString: sqlite3_column_text(stmt, 3)) : nil
-                let breakEndStr = sqlite3_column_type(stmt, 4) != SQLITE_NULL ? String(cString: sqlite3_column_text(stmt, 4)) : nil
+                let breakStartStr = columnString(stmt, 3)
+                let breakEndStr = columnString(stmt, 4)
                 let _ = sqlite3_column_type(stmt, 5) != SQLITE_NULL ? Int(sqlite3_column_int(stmt, 5)) : nil
                 let skipped = sqlite3_column_int(stmt, 6) == 1
                 let goal = Int(sqlite3_column_int(stmt, 7))
@@ -917,8 +934,7 @@ final class Database {
         if sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK {
             while sqlite3_step(stmt) == SQLITE_ROW {
                 let id = Int(sqlite3_column_int(stmt, 0))
-                let tsStr = String(cString: sqlite3_column_text(stmt, 1))
-                if let ts = iso.date(from: tsStr) {
+                if let tsStr = columnString(stmt, 1), let ts = iso.date(from: tsStr) {
                     result.append(DayRecord(id: id, timestamp: ts))
                 }
             }
