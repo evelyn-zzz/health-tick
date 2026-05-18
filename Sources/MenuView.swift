@@ -56,6 +56,7 @@ struct MenuView: View {
         }
         .padding(16)
         .frame(width: 240)
+        .fixedSize()
         .onAppear {
             menuBringOtherWindowsToFront()
         }
