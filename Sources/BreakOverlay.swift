@@ -570,7 +570,9 @@ final class BreakOverlayManager {
             forName: NSNotification.Name("HealthTickRepositionWindow"), object: nil, queue: .main
         ) { [weak self] note in
             if let win = note.object as? NSWindow {
-                self?.repositionSpecificWindow(win)
+                Task { @MainActor [weak self] in
+                    self?.repositionSpecificWindow(win)
+                }
             }
         }
         screenObservers = [wakeObserver, screenObserver, repoObserver]
