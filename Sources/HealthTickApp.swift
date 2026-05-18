@@ -11,7 +11,6 @@ struct HealthTickApp: App {
 
         MenuBarExtra {
             MenuView()
-                .id(state.phase)
                 .environment(state)
         } label: {
             MenuBarLabel()
